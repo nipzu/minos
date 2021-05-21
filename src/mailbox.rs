@@ -1,7 +1,7 @@
 const MAILBOX_BASE_PTR: *mut u32 = 0x3F00B880 as *mut u32;
-const MAILBOX_STATUS_ADDRS: *mut u32 = unsafe {MAILBOX_BASE_PTR as u32 + 0x18} as *mut u32;
-const MAILBOX_WRITE_ADDR: *mut u32 = unsafe {MAILBOX_BASE_PTR as u32 + 0x20} as *mut u32;
-const MAILBOX_READ_ADDR: *mut u32 = unsafe {MAILBOX_BASE_PTR as u32 + 0x00} as *mut u32;
+const MAILBOX_STATUS_ADDRS: *mut u32 = unsafe { MAILBOX_BASE_PTR as u32 + 0x18 } as *mut u32;
+const MAILBOX_WRITE_ADDR: *mut u32 = unsafe { MAILBOX_BASE_PTR as u32 + 0x20 } as *mut u32;
+const MAILBOX_READ_ADDR: *mut u32 = unsafe { MAILBOX_BASE_PTR as u32 + 0x00 } as *mut u32;
 
 const MAILBOX_FULL: u32 = 0x80000000;
 const MAILBOX_EMPTY: u32 = 0x40000000;
@@ -11,72 +11,72 @@ const RESPONSE_CODE: u32 = 0x80000000;
 const END_TAG: u32 = 0x00000000;
 
 #[repr(C, align(16))]
-pub struct MailboxMessage<const LEN: usize>
-where
-    [(); LEN + 6]: ,
-{
-    data: [u32; LEN + 6],
+pub struct MailboxMessageBuffer<const LEN: usize> {
+    data: [u32; LEN],
+    end: usize,
 }
 
-fn copy_from_slice<T: Copy>(dest: &mut [T], source: &[T]) {
-    for i in 0..dest.len() {
-        if i >= source.len() {
-            return;
-        }
-        dest[i] = source[i];
-    }
-}
+impl<const LEN: usize> MailboxMessageBuffer<LEN> {
+    pub fn new() -> Self {
+        let mut data = [0; LEN];
 
-impl<const LEN: usize> MailboxMessage<LEN>
-where
-    [(); LEN + 6]: ,
-{
-    pub fn new(tag: Tag, request_value: [u32; LEN]) -> Self {
-        let mut data = [0; LEN + 6];
-
-        data[0] = LEN as u32;
+        data[0] = 3;
         data[1] = REQUEST_CODE;
+        data[2] = END_TAG;
 
-        data[2] = tag.get_value();
-        data[3] = LEN as u32 * 4;
-        data[4] = REQUEST_CODE;
+        Self { data, end: 2 }
+    }
 
-        copy_from_slice(&mut data[5..LEN + 5], &request_value);
+    /// Tries to append a tag to the buffer. If it doesn't fit, `false` is returned and the buffer is left untouched.
+    #[must_use]
+    pub fn try_add_tag<const BUFFER_LEN: usize>(
+        &mut self,
+        tag: Tag,
+        buffer: [u32; BUFFER_LEN],
+    ) -> bool {
+        if self.end + 3 + BUFFER_LEN > LEN {
+            return false;
+        }
 
-        data[LEN + 5] = END_TAG;
+        self.data[self.end] = tag.get_value();
+        self.data[self.end + 1] = BUFFER_LEN as u32;
+        self.data[self.end + 2] = REQUEST_CODE;
 
-        Self { data }
+        self.data[self.end + 3..self.end + 3 + BUFFER_LEN].copy_from_slice(&buffer);
+
+        self.end += 3 + BUFFER_LEN;
+        self.data[self.end] = END_TAG;
+        self.data[0] = self.end as u32 + 1;
+
+        true
     }
 
     pub fn send(mut self, channel: u8) -> Option<[u32; LEN]> {
         unsafe {
-            while MAILBOX_STATUS_ADDRS.read_volatile() & MAILBOX_FULL > 0 { 
-                asm!("nop"); 
+            while MAILBOX_STATUS_ADDRS.read_volatile() & MAILBOX_FULL > 0 {
+                asm!("nop");
             }
-            
-            let message = 
-            (self.data.as_mut_ptr() as u32 & !0xF) | channel as u32;
 
-            MAILBOX_WRITE_ADDR.write_volatile(
-                message
-            );
+            let message = (self.data.as_mut_ptr() as u32 & !0xF) | channel as u32;
+
+            MAILBOX_WRITE_ADDR.write_volatile(message);
 
             loop {
                 while MAILBOX_STATUS_ADDRS.read_volatile() & MAILBOX_EMPTY > 0 {
-                    asm!("nop"); 
+                    asm!("nop");
                 }
 
                 if MAILBOX_READ_ADDR.read_volatile() == message {
                     if self.data[1] != RESPONSE_CODE {
                         return None;
                     }
-                    break
+                    break;
                 }
             }
         }
         let mut response = [0; LEN];
 
-        copy_from_slice(&mut response, &self.data[5..]);
+        response.copy_from_slice(&self.data[5..]);
 
         Some(response)
     }

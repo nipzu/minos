@@ -7,14 +7,14 @@
 
 mod mailbox;
 
-use mailbox::*;
 use mailbox::Tag::*;
+use mailbox::*;
 
 #[no_mangle]
 pub unsafe extern "C" fn kernel_start() -> ! {
     write("Hello, world!\n");
 
-    let message = MailboxMessage::new(GetBoardSerial, [0; 4]);
+    let message = MailboxMessageBuffer::<4>::new();
     let res = message.send(8);
 
     if let Some(v) = res {
