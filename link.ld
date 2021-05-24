@@ -3,7 +3,10 @@ SECTIONS {
     .text : { 
         KEEP(*(.text.boot))
         *(.text)
+        *(.text.*)
     }
-    .rodata : { *(.rodata) }
-    .data : { *(.data) }
+    .rodata : { *(.rodata) *(.rodata.*) }
+    .data : { *(.data) *(.data.*) }
+
+    /DISCARD/ : { *(.comment) }
 }

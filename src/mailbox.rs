@@ -1,7 +1,7 @@
 const MAILBOX_BASE_PTR: *mut u32 = 0x3F00B880 as *mut u32;
-const MAILBOX_STATUS_ADDRS: *mut u32 = unsafe { MAILBOX_BASE_PTR as u32 + 0x18 } as *mut u32;
+const MAILBOX_STATUS_ADDRS: *const u32 = unsafe { MAILBOX_BASE_PTR as u32 + 0x18 } as *const u32;
 const MAILBOX_WRITE_ADDR: *mut u32 = unsafe { MAILBOX_BASE_PTR as u32 + 0x20 } as *mut u32;
-const MAILBOX_READ_ADDR: *mut u32 = unsafe { MAILBOX_BASE_PTR as u32 + 0x00 } as *mut u32;
+const MAILBOX_READ_ADDR: *const u32 = unsafe { MAILBOX_BASE_PTR as u32 + 0x00 } as *const u32;
 
 const MAILBOX_FULL: u32 = 0x80000000;
 const MAILBOX_EMPTY: u32 = 0x40000000;
@@ -13,72 +13,111 @@ const END_TAG: u32 = 0x00000000;
 #[repr(C, align(16))]
 pub struct MailboxMessageBuffer<const LEN: usize> {
     data: [u32; LEN],
-    end: usize,
+    end: isize,
 }
 
 impl<const LEN: usize> MailboxMessageBuffer<LEN> {
     pub fn new() -> Self {
         let mut data = [0; LEN];
 
-        data[0] = 3;
-        data[1] = REQUEST_CODE;
-        data[2] = END_TAG;
+        unsafe {
+            data.as_mut_ptr().offset(0).write_volatile(3);
+            data.as_mut_ptr().offset(1).write_volatile(REQUEST_CODE);
+            data.as_mut_ptr().offset(2).write_volatile(END_TAG);
+        }
 
         Self { data, end: 2 }
     }
 
-    /// Tries to append a tag to the buffer. If it doesn't fit, `false` is returned and the buffer is left untouched.
-    #[must_use]
+    /// Tries to append a tag to the buffer. If it doesn't fit,
+    /// the number of available u32s in the buffer is returned.
     pub fn try_add_tag<const BUFFER_LEN: usize>(
         &mut self,
         tag: Tag,
         buffer: [u32; BUFFER_LEN],
-    ) -> bool {
-        if self.end + 3 + BUFFER_LEN > LEN {
-            return false;
+    ) -> Result<(), usize> {
+        if self.end as usize + 3 + BUFFER_LEN > LEN {
+            return Err(LEN - self.end);
         }
 
-        self.data[self.end] = tag.get_value();
-        self.data[self.end + 1] = BUFFER_LEN as u32;
-        self.data[self.end + 2] = REQUEST_CODE;
+        unsafe {
+            let end_ptr = self.data.as_mut_ptr();
 
-        self.data[self.end + 3..self.end + 3 + BUFFER_LEN].copy_from_slice(&buffer);
+            end_ptr.write_volatile(tag.get_value());
+            end_ptr.offset(1).write_volatile(BUFFER_LEN as u32);
+            end_ptr.offset(2).write_volatile(REQUEST_CODE);
 
-        self.end += 3 + BUFFER_LEN;
-        self.data[self.end] = END_TAG;
-        self.data[0] = self.end as u32 + 1;
+            for i in 0..BUFFER_LEN {
+                end_ptr.offset(3 + i as isize).write_volatile(buffer[i]);
+            }
 
-        true
+            self.end += 3 + BUFFER_LEN as isize;
+            self.data
+                .as_mut_ptr()
+                .offset(self.end)
+                .write_volatile(END_TAG);
+            self.data
+                .as_mut_ptr()
+                .offset(0)
+                .write_volatile(self.end as u32 + 1);
+        }
+
+        Ok(())
     }
 
-    pub fn send(mut self, channel: u8) -> Option<[u32; LEN]> {
-        unsafe {
-            while MAILBOX_STATUS_ADDRS.read_volatile() & MAILBOX_FULL > 0 {
+    pub unsafe fn send(&self, channel: u8) -> Result<MailboxResponseIterator<'self, LEN>, ()> {
+        while MAILBOX_STATUS_ADDRS.read_volatile() & MAILBOX_FULL > 0 {
+            asm!("nop");
+        }
+
+        let message = (self.data.as_ptr() as u32 & !0xF) | channel as u32;
+
+        MAILBOX_WRITE_ADDR.write_volatile(message);
+
+        loop {
+            while MAILBOX_STATUS_ADDRS.read_volatile() & MAILBOX_EMPTY > 0 {
                 asm!("nop");
             }
 
-            let message = (self.data.as_mut_ptr() as u32 & !0xF) | channel as u32;
-
-            MAILBOX_WRITE_ADDR.write_volatile(message);
-
-            loop {
-                while MAILBOX_STATUS_ADDRS.read_volatile() & MAILBOX_EMPTY > 0 {
-                    asm!("nop");
+            if MAILBOX_READ_ADDR.read_volatile() == message {
+                if self.data.as_ptr().offset(1).read_volatile() != RESPONSE_CODE {
+                    return Err(());
                 }
-
-                if MAILBOX_READ_ADDR.read_volatile() == message {
-                    if self.data[1] != RESPONSE_CODE {
-                        return None;
-                    }
-                    break;
-                }
+                break;
             }
         }
-        let mut response = [0; LEN];
 
-        response.copy_from_slice(&self.data[5..]);
+        Err(())
+    }
+}
 
-        Some(response)
+pub struct MailboxResponse<const LEN: usize> {
+    data: [u32; LEN],
+    end: usize,
+}
+
+pub struct MailboxResponseIterator<'data> {
+    response_data: &'data [u32],
+    cur: usize,
+    end: usize,
+}
+
+impl<'data> MailboxResponseIterator {
+    fn new(response: &'data MailboxResponse) -> Self {
+        Self {
+            response_data: &response.data,
+            cur: 2, // start at first tag
+            end: response.end,
+        }
+    }
+}
+
+impl< 'data> Iterator for MailboxResponseIterator<'data> {
+    type Item = (Tag, &'data [u32]);
+    fn next(&mut self) -> Self::Item {
+        if self.cur >= self.end {
+            return None;
+        }
     }
 }
 
