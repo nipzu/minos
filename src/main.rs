@@ -13,23 +13,22 @@ global_asm!(include_str!("boot.s"));
 
 mod mailbox;
 
+use mailbox::MailboxMessageBuffer;
 use mailbox::Tag::*;
-use mailbox::*;
 
 #[no_mangle]
 pub unsafe extern "C" fn kernel_start() -> ! {
-    write("Hello, world!\n");
+    let mut message = MailboxMessageBuffer::<32>::new();
+    let _ = message.try_add_tag(AllocateBuffer, [0, 0]);
+    let res = message.send();
 
-    let mut message = MailboxMessageBuffer::<8>::new();
-    message.try_add_tag(GetBoardSerial, [0; 2]);
-    let res = message.send(8);
-
-    /*if let Some(v) = res {
-        print_hex(v[0]);
-        print_hex(v[1]);
-    } else {
-        panic!("error");
-    }*/
+    for (i, (_, v)) in res.unwrap().iter().enumerate() {
+        write("\nresponse ");
+        print_hex(i as u32);
+        for i in 0..v.len() {
+            print_hex(v[i]);
+        }
+    }
 
     loop {
         writec(getc())
@@ -38,7 +37,7 @@ pub unsafe extern "C" fn kernel_start() -> ! {
 
 #[panic_handler]
 fn panic(info: &core::panic::PanicInfo) -> ! {
-    write("panicking\n");
+    write("panicked at:\n");
     match info.message() {
         Some(m) => match m.as_str() {
             Some(s) => {
@@ -76,6 +75,7 @@ fn print_hex(n: u32) {
         };
         writec(b);
     }
+    writec(b'\n');
 }
 
 const UART_DR: u32 = 0x3F201000;
