@@ -11,15 +11,15 @@
 
 global_asm!(include_str!("boot.s"));
 
+mod framebuffer;
 mod mailbox;
 
-use mailbox::MailboxMessageBuffer;
-use mailbox::Tag::*;
+use mailbox::{MailboxMessageBuffer, Tag};
 
 #[no_mangle]
 pub unsafe extern "C" fn kernel_start() -> ! {
     let mut message = MailboxMessageBuffer::<32>::new();
-    let _ = message.try_add_tag(AllocateBuffer, [0, 0]);
+    let _ = message.try_add_tag(Tag::AllocateBuffer, [0, 0]);
     let res = message.send();
 
     for (i, (_, v)) in res.unwrap().iter().enumerate() {
