@@ -14,6 +14,7 @@ global_asm!(include_str!("boot.s"));
 mod framebuffer;
 mod mailbox;
 
+use framebuffer::{Color, FrameBuffer};
 use mailbox::{MailboxMessageBuffer, Tag};
 
 #[no_mangle]
@@ -25,8 +26,27 @@ pub unsafe extern "C" fn kernel_start() -> ! {
     for (i, (_, v)) in res.unwrap().iter().enumerate() {
         write("\nresponse ");
         print_hex(i as u32);
-        for i in 0..v.len() {
-            print_hex(v[i]);
+        for n in v {
+            print_hex(*n);
+        }
+    }
+
+    let mut framebuffer = FrameBuffer::init();
+
+    let Color { r, g, b, a } = framebuffer.get_pixel(0, 0);
+
+    print_hex(((r as u32) << 12) | ((g as u32) << 8) | ((b as u32) << 4) | a as u32);
+
+    let col = Color {
+        r: 255,
+        g: 127,
+        b: 0,
+        a: 255,
+    };
+
+    for x in 0..framebuffer.get_width() {
+        for y in 0..framebuffer.get_height() {
+            framebuffer.set_pixel(x, y, col);
         }
     }
 

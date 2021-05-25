@@ -103,7 +103,7 @@ impl<const LEN: usize> MailboxMessageBuffer<LEN> {
         let mut response_data = [0; LEN];
 
         for i in 0..LEN {
-            response_data[i] = self.data.as_ptr().offset(i as isize).read_volatile();
+            response_data[i] = self.data.as_ptr().add(i).read_volatile();
         }
 
         Ok(MailboxResponse {
