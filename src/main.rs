@@ -11,10 +11,14 @@
 
 global_asm!(include_str!("boot.s"));
 
+mod console;
 mod font;
 mod framebuffer;
 mod mailbox;
 
+use core::fmt::Write;
+
+use console::Console;
 use framebuffer::{Color, FrameBuffer};
 
 /// The starting point of the kernel, called from boot.s
@@ -58,12 +62,61 @@ pub unsafe extern "C" fn kernel_start() -> ! {
         }
     }
 
+    let mut console = Console::new(&mut framebuffer);
+
+    console.write_str(
+        include_str!("../aarch64-raspi3.json")
+    );
+
+    /*for (i, c) in (' '..='~').chain(Some('\u{FFFD}')).enumerate() {
+        let char_pixels = font::get_char_pixels(c);
+        for x in 0..6 {
+            for y in 0..8 {
+                let color = if char_pixels[x][y] {
+                    Color {
+                        r: 255,
+                        g: 255,
+                        b: 255,
+                        a: 255,
+                    }
+                } else {
+                    Color {
+                        r: 0,
+                        g: 0,
+                        b: 0,
+                        a: 255,
+                    }
+                };
+
+                framebuffer.set_pixel(
+                    2 * (x + (i % 16) * 6) as u32,
+                    2 * (y + (i / 16) * 8) as u32,
+                    color,
+                );
+                framebuffer.set_pixel(
+                    2 * (x + (i % 16) * 6) as u32 + 1,
+                    2 * (y + (i / 16) * 8) as u32,
+                    color,
+                );
+                framebuffer.set_pixel(
+                    2 * (x + (i % 16) * 6) as u32,
+                    2 * (y + (i / 16) * 8) as u32 + 1,
+                    color,
+                );
+                framebuffer.set_pixel(
+                    2 * (x + (i % 16) * 6) as u32 + 1,
+                    2 * (y + (i / 16) * 8) as u32 + 1,
+                    color,
+                );
+            }
+        }
+    }*/
+
     // let Color { r, g, b, a } = framebuffer.get_pixel(0, 0);
 
     // write("new color:\n");
     // print_hex(((r as u32) << 24) | ((g as u32) << 16) | ((b as u32) << 8) | a as u32);
-    // ABCDEFGHIJKLMNOPQRSTUVWXYZ
-    // abcdefghijJklmnopqrstuvwxyz
+
     loop {
         // writec(getc())
     }

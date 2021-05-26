@@ -1,6 +1,8 @@
 qemu:
 	cargo b --release
-	qemu-system-aarch64 -M raspi3 --serial stdio --kernel target/aarch64-raspi3/release/minos
+	/home/sampo/Downloads/gcc-arm-10.2-2020.11-x86_64-aarch64-none-elf/bin/aarch64-none-elf-objcopy target/aarch64-raspi3/release/minos kernel.elf
+	/home/sampo/Downloads/gcc-arm-10.2-2020.11-x86_64-aarch64-none-elf/bin/aarch64-none-elf-objcopy kernel.elf -O binary kernel8.img
+	qemu-system-aarch64 -M raspi3 --serial stdio --kernel kernel8.img
 	# download from https://developer.arm.com/tools-and-software/open-source-software/developer-tools/gnu-toolchain/gnu-a/downloads
 deploy:
 	cargo b --release

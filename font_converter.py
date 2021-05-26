@@ -1,11 +1,14 @@
-with open("E:\\font8bit.bmp","rb") as f:
-  data = list(f.read()[0x3e:])
-  data.reverse()
+from PIL import Image
+
+with open("font_data.txt","w") as font_out:
+  font_in = Image.open("font.png")
   b = 0
   i = 0
-  for c in "".join(["".join(["#" if data[96*y+95-x] == 1 else " " for x in range(96)]) for y in range(48)]):
-    b += 2**(i % 8) * (0 if c == " " else 1)
-    i += 1
-    if i % 8 == 0:
-      print(b, ",")
+  font_out.write("[")
+  for i in range(48 * 96):
+    if font_in.getpixel((i % 96, i // 96)) == 1:
+      b += 2**(i % 8)
+    if (i + 1) % 8 == 0:
+      font_out.write(str(b) + ",")
       b = 0
+  font_out.write("]")
