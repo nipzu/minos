@@ -11,11 +11,15 @@
 
 global_asm!(include_str!("boot.s"));
 
+mod font;
 mod framebuffer;
 mod mailbox;
 
 use framebuffer::{Color, FrameBuffer};
 
+/// The starting point of the kernel, called from boot.s
+/// # Safety
+/// this function should only be called once from boot.s by one thread
 #[no_mangle]
 pub unsafe extern "C" fn kernel_start() -> ! {
     /*

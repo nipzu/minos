@@ -1,7 +1,8 @@
 const MAILBOX_BASE_PTR: *mut u32 = 0x3F00B880 as *mut u32;
+// TODO: could we use offset here?
 const MAILBOX_STATUS_ADDRS: *const u32 = unsafe { MAILBOX_BASE_PTR as u32 + 0x18 } as *const u32;
 const MAILBOX_WRITE_ADDR: *mut u32 = unsafe { MAILBOX_BASE_PTR as u32 + 0x20 } as *mut u32;
-const MAILBOX_READ_ADDR: *const u32 = unsafe { MAILBOX_BASE_PTR as u32 + 0x00 } as *const u32;
+const MAILBOX_READ_ADDR: *const u32 = MAILBOX_BASE_PTR;
 
 const MAILBOX_FULL: u32 = 0x80000000;
 const MAILBOX_EMPTY: u32 = 0x40000000;
