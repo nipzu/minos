@@ -1,8 +1,16 @@
-build:
-	cargo b --release --target aarch64-raspi3
+qemu:
+	cargo b --release
+	qemu-system-aarch64 -M raspi3 --serial stdio --kernel target/aarch64-raspi3/release/minos
 	# download from https://developer.arm.com/tools-and-software/open-source-software/developer-tools/gnu-toolchain/gnu-a/downloads
-	/home/sampo/Downloads/gcc-arm-10.2-2020.11-x86_64-aarch64-none-elf/bin/aarch64-none-elf-as ./boot.S -o boot.o
-	/home/sampo/Downloads/gcc-arm-10.2-2020.11-x86_64-aarch64-none-elf/bin/aarch64-none-elf-ld boot.o target/aarch64-unknown-none-softfloat/release/libminos.rlib -T link.ld -o kernel.elf
-dump: 
-	/home/sampo/Downloads/gcc-arm-10.2-2020.11-x86_64-aarch64-none-elf/bin/aarch64-none-elf-objdump ./kernel.elf -D
-	/home/sampo/Downloads/gcc-arm-10.2-2020.11-x86_64-aarch64-none-elf/bin/aarch64-none-elf-objdump ./kernel.elf -s
+deploy:
+	cargo b --release
+	/home/sampo/Downloads/gcc-arm-10.2-2020.11-x86_64-aarch64-none-elf/bin/aarch64-none-elf-objcopy target/aarch64-raspi3/release/minos kernel.elf
+	/home/sampo/Downloads/gcc-arm-10.2-2020.11-x86_64-aarch64-none-elf/bin/aarch64-none-elf-objcopy kernel.elf -O binary kernel8.img
+	sudo cp kernel8.img /home/sampo/sd/
+dump:
+	/home/sampo/Downloads/gcc-arm-10.2-2020.11-x86_64-aarch64-none-elf/bin/aarch64-none-elf-objdump target/aarch64-raspi3/release/minos -D
+	/home/sampo/Downloads/gcc-arm-10.2-2020.11-x86_64-aarch64-none-elf/bin/aarch64-none-elf-objdump target/aarch64-raspi3/release/minos -s
+clean:
+	cargo clean
+	rm kernel.elf
+	rm kernel8.img

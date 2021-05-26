@@ -50,24 +50,26 @@ impl<const LEN: usize> MailboxMessageBuffer<LEN> {
         }
 
         unsafe {
-            let end_ptr = self.data.as_mut_ptr().offset(self.end as isize);
+            let end_ptr = self.data.as_mut_ptr().add(self.end);
 
-            end_ptr.write_volatile(tag.get_value());
-            end_ptr.offset(1).write_volatile(4 * BUFFER_LEN as u32);
-            end_ptr.offset(2).write_volatile(REQUEST_CODE);
+            // set tag, buffer len, and request code
+            end_ptr.add(0).write_volatile(tag.get_value());
+            end_ptr.add(1).write_volatile(4 * BUFFER_LEN as u32);
+            end_ptr.add(2).write_volatile(REQUEST_CODE);
 
             for i in 0..BUFFER_LEN {
-                end_ptr.offset(3 + i as isize).write_volatile(buffer[i]);
+                // copy buffer contents
+                end_ptr.add(3 + i).write_volatile(buffer[i]);
             }
 
+            // set new end pointer
             self.end += 3 + BUFFER_LEN;
+            // write end tag
+            self.data.as_mut_ptr().add(self.end).write_volatile(END_TAG);
+            // write len to first u32
             self.data
                 .as_mut_ptr()
-                .offset(self.end as isize)
-                .write_volatile(END_TAG);
-            self.data
-                .as_mut_ptr()
-                .offset(0)
+                .add(0)
                 .write_volatile(4 * (self.end as u32 + 1));
         }
 
@@ -93,7 +95,7 @@ impl<const LEN: usize> MailboxMessageBuffer<LEN> {
             }
 
             if MAILBOX_READ_ADDR.read_volatile() == message {
-                if self.data.as_ptr().offset(1).read_volatile() != RESPONSE_CODE {
+                if self.data.as_ptr().add(1).read_volatile() != RESPONSE_CODE {
                     return Err(());
                 }
                 break;

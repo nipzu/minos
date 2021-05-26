@@ -15,12 +15,12 @@ mod framebuffer;
 mod mailbox;
 
 use framebuffer::{Color, FrameBuffer};
-use mailbox::{MailboxMessageBuffer, Tag};
 
 #[no_mangle]
 pub unsafe extern "C" fn kernel_start() -> ! {
+    /*
     let mut message = MailboxMessageBuffer::<32>::new();
-    let _ = message.try_add_tag(Tag::AllocateBuffer, [0, 0]);
+    let _ = message.try_add_tag(Tag::GetDepth, [0, 0]);
     let res = message.send();
 
     for (i, (_, v)) in res.unwrap().iter().enumerate() {
@@ -30,28 +30,38 @@ pub unsafe extern "C" fn kernel_start() -> ! {
             print_hex(*n);
         }
     }
+    */
 
     let mut framebuffer = FrameBuffer::init();
 
-    let Color { r, g, b, a } = framebuffer.get_pixel(0, 0);
+    // let Color { r, g, b, a } = framebuffer.get_pixel(0, 0);
 
-    print_hex(((r as u32) << 12) | ((g as u32) << 8) | ((b as u32) << 4) | a as u32);
-
-    let col = Color {
-        r: 255,
-        g: 127,
-        b: 0,
-        a: 255,
-    };
+    // write("default color:\n");
+    // print_hex(((r as u32) << 24) | ((g as u32) << 16) | ((b as u32) << 8) | a as u32);
 
     for x in 0..framebuffer.get_width() {
         for y in 0..framebuffer.get_height() {
-            framebuffer.set_pixel(x, y, col);
+            framebuffer.set_pixel(
+                x,
+                y,
+                Color {
+                    r: 0,
+                    g: (x * 255 / framebuffer.get_width()) as u8,
+                    b: (y * 255 / framebuffer.get_height()) as u8,
+                    a: 255,
+                },
+            );
         }
     }
 
+    // let Color { r, g, b, a } = framebuffer.get_pixel(0, 0);
+
+    // write("new color:\n");
+    // print_hex(((r as u32) << 24) | ((g as u32) << 16) | ((b as u32) << 8) | a as u32);
+    // ABCDEFGHIJKLMNOPQRSTUVWXYZ
+    // abcdefghijJklmnopqrstuvwxyz
     loop {
-        writec(getc())
+        // writec(getc())
     }
 }
 
