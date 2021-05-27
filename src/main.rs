@@ -36,17 +36,17 @@ pub unsafe extern "C" fn kernel_start() -> ! {
 }
 
 #[panic_handler]
-fn panic(info: &core::panic::PanicInfo) -> ! {
+fn panic(panic_info: &core::panic::PanicInfo) -> ! {
     // TODO: what if we panic while initializing the console?
     // probably doesn't matter, we'd just deadlock
 
-    match info.message() {
+    match panic_info.message() {
         Some(m) => println!("panicked with message: {}", m),
         None => println!("panicked with no message"),
     }
 
-    if let Some(loc) = info.location() {
-        println!("in file: {} at line {}", loc.file(), loc.line());
+    if let Some(location) = panic_info.location() {
+        println!("in file: {} at line {}", location.file(), location.line());
     }
 
     loop {}
