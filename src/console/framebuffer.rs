@@ -112,9 +112,7 @@ impl Framebuffer {
         message
             .try_add_tag(FramebufferTag::SetVirtualOffset, [0; 2])
             .unwrap();
-        message
-            .try_add_tag(FramebufferTag::SetDepth, [32])
-            .unwrap();
+        message.try_add_tag(FramebufferTag::SetDepth, [32]).unwrap();
         message
             .try_add_tag(FramebufferTag::SetPixelOrder, [1])
             .unwrap();
@@ -157,7 +155,7 @@ impl Framebuffer {
                 FramebufferTag::AllocateBuffer => {
                     assert!(buffer_addr.is_none());
                     assert!(!response_buffer.is_empty());
-                    // TODO: what is this black magic bitmask?
+                    // TODO: explain this black magic bitmask
                     buffer_addr = Some((response_buffer[0] & 0x3FFFFFFF) as *mut u8);
                 }
                 _ => (),
@@ -242,6 +240,7 @@ impl ColorFormat {
     }
 }
 
+#[derive(Clone, Copy, Debug, Hash, Eq, PartialEq)]
 enum FramebufferTag {
     AllocateBuffer,
     ReleaseBuffer,
