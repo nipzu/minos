@@ -1,7 +1,12 @@
 use core::fmt::{Result, Write};
 
-use crate::font::{get_char_pixels, PADDED_FONT_HEIGHT, PADDED_FONT_WIDTH};
-use crate::framebuffer::{Color, FrameBuffer};
+use spin::{lazy::Lazy, mutex::spin::SpinMutex};
+
+mod font;
+mod framebuffer;
+
+use font::{get_char_pixels, PADDED_FONT_HEIGHT, PADDED_FONT_WIDTH};
+use framebuffer::{Color, FrameBuffer};
 
 const BACKGROUND_COLOR: Color = Color {
     r: 32,
@@ -9,6 +14,7 @@ const BACKGROUND_COLOR: Color = Color {
     b: 32,
     a: 255,
 };
+
 const FONT_COLOR: Color = Color {
     r: 255,
     g: 255,
@@ -16,16 +22,21 @@ const FONT_COLOR: Color = Color {
     a: 255,
 };
 
-pub struct Console<'fb> {
+pub static CONSOLE: Lazy<SpinMutex<Console>> = Lazy::new(Console::init);
+
+unsafe impl Send for Console {}
+
+pub struct Console {
     cur_row: u32,
     cur_column: u32,
     num_columns: u32,
     num_rows: u32,
-    framebuffer: &'fb mut FrameBuffer,
+    framebuffer: FrameBuffer,
 }
 
-impl Console<'_> {
-    pub fn new(framebuffer: &mut FrameBuffer) -> Console {
+impl Console {
+    pub fn init() -> SpinMutex<Console> {
+        let framebuffer = FrameBuffer::init();
         let num_columns = framebuffer.get_width() / PADDED_FONT_WIDTH as u32;
         let num_rows = framebuffer.get_height() / PADDED_FONT_HEIGHT as u32;
 
@@ -37,7 +48,8 @@ impl Console<'_> {
             num_rows,
         };
         con.clear();
-        con
+
+        SpinMutex::new(con)
     }
 
     fn newline(&mut self) {
@@ -78,7 +90,7 @@ impl Console<'_> {
     }
 }
 
-impl Write for Console<'_> {
+impl Write for Console {
     fn write_str(&mut self, s: &str) -> Result {
         for c in s.chars() {
             self.write_char(c)?;

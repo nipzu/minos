@@ -1,4 +1,4 @@
-static FONT_DATA: [u8; FONT_WIDTH * FONT_HEIGHT * 96 / 8] = include!("../font_data.txt");
+static FONT_DATA: [u8; FONT_WIDTH * FONT_HEIGHT * 96 / 8] = include!("../../font_data.txt");
 
 pub const FONT_WIDTH: usize = 5;
 pub const FONT_HEIGHT: usize = 8;
