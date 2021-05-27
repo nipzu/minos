@@ -1,3 +1,5 @@
+use core::marker::PhantomData;
+
 const MAILBOX_BASE_PTR: *mut u32 = 0x3F00B880 as *mut u32;
 // TODO: could we use offset here?
 const MAILBOX_STATUS_ADDRS: *const u32 = unsafe { MAILBOX_BASE_PTR as u32 + 0x18 } as *const u32;
@@ -16,12 +18,13 @@ const MAILBOX_PROPERTY_CHANNEL: u8 = 8;
 /// A type that represents a properly aligned Mailbox buffer.
 /// `LEN` is the maximum number of `u32`s that can fit in the buffer.
 #[repr(C, align(16))]
-pub struct MailboxMessageBuffer<const LEN: usize> {
+pub struct MailboxMessageBuffer<const LEN: usize, T: MailboxTagType> {
     data: [u32; LEN],
     end: usize,
+    _t: PhantomData<T>,
 }
 
-impl<const LEN: usize> MailboxMessageBuffer<LEN> {
+impl<const LEN: usize, T: MailboxTagType> MailboxMessageBuffer<LEN, T> {
     /// Creates a new `MailboxMessageBuffer` that can contain at most `4*LEN` bytes of data
     /// # Panics
     /// This code will panic if `LEN < 3`
@@ -35,14 +38,18 @@ impl<const LEN: usize> MailboxMessageBuffer<LEN> {
             data.as_mut_ptr().offset(2).write_volatile(END_TAG);
         }
 
-        Self { data, end: 2 }
+        Self {
+            data,
+            end: 2,
+            _t: PhantomData,
+        }
     }
 
     /// Tries to append a tag to the buffer. If it doesn't fit,
     /// the number of available `u32`s in the buffer is returned.
     pub fn try_add_tag<const BUFFER_LEN: usize>(
         &mut self,
-        tag: Tag,
+        tag: T,
         buffer: [u32; BUFFER_LEN],
     ) -> Result<(), usize> {
         if self.end + 3 + BUFFER_LEN >= LEN {
@@ -81,7 +88,7 @@ impl<const LEN: usize> MailboxMessageBuffer<LEN> {
     ///
     /// # Safety
     /// Caller must make sure that the contents of the buffer are safe.
-    pub unsafe fn send(&self) -> Result<MailboxResponse<LEN>, ()> {
+    pub unsafe fn send(&self) -> Result<MailboxResponse<LEN, T>, ()> {
         while MAILBOX_STATUS_ADDRS.read_volatile() & MAILBOX_FULL > 0 {
             asm!("nop");
         }
@@ -112,58 +119,71 @@ impl<const LEN: usize> MailboxMessageBuffer<LEN> {
         Ok(MailboxResponse {
             data: response_data,
             end: self.end,
+            _t: PhantomData,
         })
     }
 }
 
 /// A struct representing the response to a Mailbox message.
 /// `LEN` is the capacity of the buffer in `u32`s.
-pub struct MailboxResponse<const LEN: usize> {
+pub struct MailboxResponse<const LEN: usize, T: MailboxTagType> {
     data: [u32; LEN],
     end: usize,
+    _t: PhantomData<T>,
 }
 
-impl<const LEN: usize> MailboxResponse<LEN> {
+impl<const LEN: usize, T: MailboxTagType> MailboxResponse<LEN, T> {
     /// Returns an iterator that iterates through the tags in the response.
-    pub fn iter(&self) -> MailboxResponseIterator {
+    pub fn iter(&self) -> MailboxResponseIterator<T> {
         MailboxResponseIterator {
             response_data: &self.data,
             cur: 2, // start at first tag
             end: self.end,
+            _t: PhantomData,
         }
     }
 }
 
-pub struct MailboxResponseIterator<'data> {
+pub struct MailboxResponseIterator<'data, T: MailboxTagType> {
     response_data: &'data [u32],
     cur: usize,
     end: usize,
+    _t: PhantomData<T>,
 }
 
-impl<'data> Iterator for MailboxResponseIterator<'data> {
-    type Item = (Tag, &'data [u32]);
+impl<'data, T: MailboxTagType> Iterator for MailboxResponseIterator<'data, T> {
+    type Item = (T, &'data [u32]);
     fn next(&mut self) -> Option<Self::Item> {
-        if self.cur >= self.end {
-            return None;
+        let mut tag = None;
+        let mut value_buffer: &[u32] = &[];
+        while tag.is_none() {
+            if self.cur >= self.end {
+                return None;
+            }
+            assert!(self.cur < self.end);
+            let buffer_len = self.response_data[self.cur + 1] as usize / 4;
+            assert!(self.cur + 3 + buffer_len <= self.end);
+            assert!(self.response_data[self.cur + 2] >> 31 == 1);
+
+            tag = T::from_value(self.response_data[self.cur]);
+            let response_len = ((self.response_data[self.cur + 2] as usize & 0x7FFFFFFF) + 3) / 4;
+            value_buffer = &self.response_data[self.cur + 3..self.cur + 3 + response_len];
+            self.cur += 3 + buffer_len;
         }
-        assert!(self.cur < self.end);
-        let buffer_len = self.response_data[self.cur + 1] as usize / 4;
-        assert!(self.cur + 3 + buffer_len <= self.end);
-        assert!(self.response_data[self.cur + 2] >> 31 == 1);
 
-        let tag = Tag::from_value(self.response_data[self.cur]);
-        let response_len = ((self.response_data[self.cur + 2] as usize & 0x7FFFFFFF) + 3) / 4;
-        let value_buffer = &self.response_data[self.cur + 3..self.cur + 3 + response_len];
-        self.cur += 3 + buffer_len;
-
-        Some((tag, value_buffer))
+        Some((tag.unwrap(), value_buffer))
     }
+}
+
+pub trait MailboxTagType: Sized {
+    fn get_value(&self) -> u32;
+    fn from_value(value: u32) -> Option<Self>;
 }
 
 /// An enum representing one of the possible tags in a Mailbox message.
 #[allow(dead_code)]
 #[derive(Clone, Copy, Debug, Hash, Eq, PartialEq)]
-pub enum Tag {
+pub enum MiscTag {
     // VideoCore
     GetFirmwareVersion,
 
@@ -212,43 +232,11 @@ pub enum Tag {
     ExecuteCode,
     GetDispmanxResourceMemHandle,
     GetEDIDBlock,
-
-    // frame buffer
-    AllocateBuffer,
-    ReleaseBuffer,
-    BlackScreen,
-    GetPhysicalWidthHeight,
-    TestPhysicalWidthHeight,
-    SetPhysicalWidthHeight,
-    GetVirtualWidthHeight,
-    TestVirtualWidthHeight,
-    SetVirtualWidthHeight,
-    GetDepth,
-    TestDepth,
-    SetDepth,
-    GetPixelOrder,
-    TestPixelOrder,
-    SetPixelOrder,
-    GetAlphaMode,
-    TestAlphaMode,
-    SetAlphaMode,
-    GetPitch,
-    GetVirtualOffset,
-    TestVirtualOffset,
-    SetVirtualOffset,
-    GetOverscan,
-    TestOverscan,
-    SetOverscan,
-    GetPalette,
-    TestPalette,
-    SetPalette,
-    SetCursorInfo,
-    SetCursorState,
 }
 
-impl Tag {
+impl MailboxTagType for MiscTag {
     fn get_value(&self) -> u32 {
-        use Tag::*;
+        use MiscTag::*;
         match *self {
             // VideoCore
             GetFirmwareVersion => 0x00000001,
@@ -298,44 +286,12 @@ impl Tag {
             ExecuteCode => 0x00030010,
             GetDispmanxResourceMemHandle => 0x00030014,
             GetEDIDBlock => 0x00030020,
-
-            // frame buffer
-            AllocateBuffer => 0x00040001,
-            ReleaseBuffer => 0x00048001,
-            BlackScreen => 0x00040002,
-            GetPhysicalWidthHeight => 0x00040003,
-            TestPhysicalWidthHeight => 0x00044003,
-            SetPhysicalWidthHeight => 0x00048003,
-            GetVirtualWidthHeight => 0x00040004,
-            TestVirtualWidthHeight => 0x00044004,
-            SetVirtualWidthHeight => 0x00048004,
-            GetDepth => 0x00040005,
-            TestDepth => 0x00044005,
-            SetDepth => 0x00048005,
-            GetPixelOrder => 0x00040006,
-            TestPixelOrder => 0x00044006,
-            SetPixelOrder => 0x00048006,
-            GetAlphaMode => 0x00040007,
-            TestAlphaMode => 0x00044007,
-            SetAlphaMode => 0x00048007,
-            GetPitch => 0x00040008,
-            GetVirtualOffset => 0x00040009,
-            TestVirtualOffset => 0x00044009,
-            SetVirtualOffset => 0x00048009,
-            GetOverscan => 0x0004000A,
-            TestOverscan => 0x0004400A,
-            SetOverscan => 0x0004800A,
-            GetPalette => 0x0004000B,
-            TestPalette => 0x0004400B,
-            SetPalette => 0x0004800B,
-            SetCursorInfo => 0x00008010,
-            SetCursorState => 0x00008011,
         }
     }
 
-    fn from_value(value: u32) -> Tag {
-        use Tag::*;
-        match value {
+    fn from_value(value: u32) -> Option<MiscTag> {
+        use MiscTag::*;
+        Some(match value {
             // VideoCore
             0x00000001 => GetFirmwareVersion,
 
@@ -385,39 +341,7 @@ impl Tag {
             0x00030014 => GetDispmanxResourceMemHandle,
             0x00030020 => GetEDIDBlock,
 
-            // frame buffer
-            0x00040001 => AllocateBuffer,
-            0x00048001 => ReleaseBuffer,
-            0x00040002 => BlackScreen,
-            0x00040003 => GetPhysicalWidthHeight,
-            0x00044003 => TestPhysicalWidthHeight,
-            0x00048003 => SetPhysicalWidthHeight,
-            0x00040004 => GetVirtualWidthHeight,
-            0x00044004 => TestVirtualWidthHeight,
-            0x00048004 => SetVirtualWidthHeight,
-            0x00040005 => GetDepth,
-            0x00044005 => TestDepth,
-            0x00048005 => SetDepth,
-            0x00040006 => GetPixelOrder,
-            0x00044006 => TestPixelOrder,
-            0x00048006 => SetPixelOrder,
-            0x00040007 => GetAlphaMode,
-            0x00044007 => TestAlphaMode,
-            0x00048007 => SetAlphaMode,
-            0x00040008 => GetPitch,
-            0x00040009 => GetVirtualOffset,
-            0x00044009 => TestVirtualOffset,
-            0x00048009 => SetVirtualOffset,
-            0x0004000A => GetOverscan,
-            0x0004400A => TestOverscan,
-            0x0004800A => SetOverscan,
-            0x0004000B => GetPalette,
-            0x0004400B => TestPalette,
-            0x0004800B => SetPalette,
-            0x00008010 => SetCursorInfo,
-            0x00008011 => SetCursorState,
-
-            _ => panic!("unknown mailbox tag value"),
-        }
+            _ => return None,
+        })
     }
 }

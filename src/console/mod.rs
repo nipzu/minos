@@ -6,7 +6,7 @@ mod font;
 mod framebuffer;
 
 use font::{get_char_pixels, PADDED_FONT_HEIGHT, PADDED_FONT_WIDTH};
-use framebuffer::{Color, FrameBuffer};
+use framebuffer::{Color, Framebuffer};
 
 const BACKGROUND_COLOR: Color = Color {
     r: 32,
@@ -31,12 +31,12 @@ pub struct Console {
     cur_column: u32,
     num_columns: u32,
     num_rows: u32,
-    framebuffer: FrameBuffer,
+    framebuffer: Framebuffer,
 }
 
 impl Console {
     pub fn init() -> SpinMutex<Console> {
-        let framebuffer = FrameBuffer::init();
+        let framebuffer = Framebuffer::init();
         let num_columns = framebuffer.get_width() / PADDED_FONT_WIDTH as u32;
         let num_rows = framebuffer.get_height() / PADDED_FONT_HEIGHT as u32;
 

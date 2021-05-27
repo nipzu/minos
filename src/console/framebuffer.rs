@@ -1,4 +1,4 @@
-use crate::mailbox::{MailboxMessageBuffer, Tag};
+use crate::mailbox::{MailboxMessageBuffer, MailboxTagType};
 
 #[derive(Clone, Copy, Debug)]
 pub struct Color {
@@ -92,27 +92,35 @@ impl Color {
     }
 }
 
-pub struct FrameBuffer {
+pub struct Framebuffer {
     buffer_addr: *mut u8,
     width: isize,
     height: isize,
     format: ColorFormat,
 }
 
-impl FrameBuffer {
-    pub fn init() -> FrameBuffer {
-        let mut message = MailboxMessageBuffer::<32>::new();
+impl Framebuffer {
+    pub fn init() -> Framebuffer {
+        let mut message = MailboxMessageBuffer::<32, FramebufferTag>::new();
 
         message
-            .try_add_tag(Tag::SetVirtualWidthHeight, [640, 480])
+            .try_add_tag(FramebufferTag::SetVirtualWidthHeight, [640, 480])
             .unwrap();
         message
-            .try_add_tag(Tag::SetPhysicalWidthHeight, [640, 480])
+            .try_add_tag(FramebufferTag::SetPhysicalWidthHeight, [640, 480])
             .unwrap();
-        message.try_add_tag(Tag::SetVirtualOffset, [0; 2]).unwrap();
-        message.try_add_tag(Tag::SetDepth, [32]).unwrap();
-        message.try_add_tag(Tag::SetPixelOrder, [1]).unwrap();
-        message.try_add_tag(Tag::AllocateBuffer, [4096, 0]).unwrap();
+        message
+            .try_add_tag(FramebufferTag::SetVirtualOffset, [0; 2])
+            .unwrap();
+        message
+            .try_add_tag(FramebufferTag::SetDepth, [32])
+            .unwrap();
+        message
+            .try_add_tag(FramebufferTag::SetPixelOrder, [1])
+            .unwrap();
+        message
+            .try_add_tag(FramebufferTag::AllocateBuffer, [4096, 0])
+            .unwrap();
 
         let mut buffer_addr = None;
         let mut dimensions = None;
@@ -127,26 +135,26 @@ impl FrameBuffer {
 
         for (tag, response_buffer) in response.iter() {
             match tag {
-                Tag::SetVirtualWidthHeight => {
+                FramebufferTag::SetVirtualWidthHeight => {
                     //assert!(dimensions.is_none());
                     //assert!(response_buffer.len() >= 2);
                     dimensions = Some((response_buffer[0], response_buffer[1]));
                 }
-                Tag::SetVirtualOffset => {
+                FramebufferTag::SetVirtualOffset => {
                     assert!(!is_set_virtual_offset);
                     is_set_virtual_offset = true;
                 }
-                Tag::SetDepth => {
+                FramebufferTag::SetDepth => {
                     assert!(depth.is_none());
                     assert!(!response_buffer.is_empty());
                     depth = Some(response_buffer[0]);
                 }
-                Tag::SetPixelOrder => {
+                FramebufferTag::SetPixelOrder => {
                     assert!(pixel_order.is_none());
                     assert!(!response_buffer.is_empty());
                     pixel_order = Some(response_buffer[0]);
                 }
-                Tag::AllocateBuffer => {
+                FramebufferTag::AllocateBuffer => {
                     assert!(buffer_addr.is_none());
                     assert!(!response_buffer.is_empty());
                     // TODO: what is this black magic bitmask?
@@ -166,7 +174,7 @@ impl FrameBuffer {
             _ => panic!("received incorrect framebuffer pixel format"),
         };
 
-        FrameBuffer {
+        Framebuffer {
             buffer_addr: buffer_addr.expect("did not receive framebuffer address"),
             width: dimensions
                 .expect("did not reveive framebuffer dimensions")
@@ -231,5 +239,114 @@ impl ColorFormat {
             ColorFormat::RGB16 | ColorFormat::BGR16 => 2,
             ColorFormat::RGBA32 | ColorFormat::BGRA32 => 4,
         }
+    }
+}
+
+enum FramebufferTag {
+    AllocateBuffer,
+    ReleaseBuffer,
+    BlackScreen,
+    GetPhysicalWidthHeight,
+    TestPhysicalWidthHeight,
+    SetPhysicalWidthHeight,
+    GetVirtualWidthHeight,
+    TestVirtualWidthHeight,
+    SetVirtualWidthHeight,
+    GetDepth,
+    TestDepth,
+    SetDepth,
+    GetPixelOrder,
+    TestPixelOrder,
+    SetPixelOrder,
+    GetAlphaMode,
+    TestAlphaMode,
+    SetAlphaMode,
+    GetPitch,
+    GetVirtualOffset,
+    TestVirtualOffset,
+    SetVirtualOffset,
+    GetOverscan,
+    TestOverscan,
+    SetOverscan,
+    GetPalette,
+    TestPalette,
+    SetPalette,
+    SetCursorInfo,
+    SetCursorState,
+}
+
+impl MailboxTagType for FramebufferTag {
+    fn get_value(&self) -> u32 {
+        use FramebufferTag::*;
+        match *self {
+            AllocateBuffer => 0x00040001,
+            ReleaseBuffer => 0x00048001,
+            BlackScreen => 0x00040002,
+            GetPhysicalWidthHeight => 0x00040003,
+            TestPhysicalWidthHeight => 0x00044003,
+            SetPhysicalWidthHeight => 0x00048003,
+            GetVirtualWidthHeight => 0x00040004,
+            TestVirtualWidthHeight => 0x00044004,
+            SetVirtualWidthHeight => 0x00048004,
+            GetDepth => 0x00040005,
+            TestDepth => 0x00044005,
+            SetDepth => 0x00048005,
+            GetPixelOrder => 0x00040006,
+            TestPixelOrder => 0x00044006,
+            SetPixelOrder => 0x00048006,
+            GetAlphaMode => 0x00040007,
+            TestAlphaMode => 0x00044007,
+            SetAlphaMode => 0x00048007,
+            GetPitch => 0x00040008,
+            GetVirtualOffset => 0x00040009,
+            TestVirtualOffset => 0x00044009,
+            SetVirtualOffset => 0x00048009,
+            GetOverscan => 0x0004000A,
+            TestOverscan => 0x0004400A,
+            SetOverscan => 0x0004800A,
+            GetPalette => 0x0004000B,
+            TestPalette => 0x0004400B,
+            SetPalette => 0x0004800B,
+            SetCursorInfo => 0x00008010,
+            SetCursorState => 0x00008011,
+        }
+    }
+
+    fn from_value(value: u32) -> Option<FramebufferTag> {
+        use FramebufferTag::*;
+        Some(match value {
+            0x00040001 => AllocateBuffer,
+            0x00048001 => ReleaseBuffer,
+            0x00040002 => BlackScreen,
+            0x00040003 => GetPhysicalWidthHeight,
+            0x00044003 => TestPhysicalWidthHeight,
+            0x00048003 => SetPhysicalWidthHeight,
+            0x00040004 => GetVirtualWidthHeight,
+            0x00044004 => TestVirtualWidthHeight,
+            0x00048004 => SetVirtualWidthHeight,
+            0x00040005 => GetDepth,
+            0x00044005 => TestDepth,
+            0x00048005 => SetDepth,
+            0x00040006 => GetPixelOrder,
+            0x00044006 => TestPixelOrder,
+            0x00048006 => SetPixelOrder,
+            0x00040007 => GetAlphaMode,
+            0x00044007 => TestAlphaMode,
+            0x00048007 => SetAlphaMode,
+            0x00040008 => GetPitch,
+            0x00040009 => GetVirtualOffset,
+            0x00044009 => TestVirtualOffset,
+            0x00048009 => SetVirtualOffset,
+            0x0004000A => GetOverscan,
+            0x0004400A => TestOverscan,
+            0x0004800A => SetOverscan,
+            0x0004000B => GetPalette,
+            0x0004400B => TestPalette,
+            0x0004800B => SetPalette,
+            0x00008010 => SetCursorInfo,
+            0x00008011 => SetCursorState,
+
+            _ => return None,
+        })
     }
 }
