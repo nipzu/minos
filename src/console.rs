@@ -1,29 +1,79 @@
-use core::fmt::{Error, Result, Write};
+use core::fmt::{Result, Write};
 
-use crate::font::{get_char_pixels, PADDED_FONT_WIDTH, PADDED_FONT_HEIGHT};
+use crate::font::{get_char_pixels, PADDED_FONT_HEIGHT, PADDED_FONT_WIDTH};
 use crate::framebuffer::{Color, FrameBuffer};
+
+const BACKGROUND_COLOR: Color = Color {
+    r: 32,
+    g: 32,
+    b: 32,
+    a: 255,
+};
+const FONT_COLOR: Color = Color {
+    r: 255,
+    g: 255,
+    b: 255,
+    a: 255,
+};
 
 pub struct Console<'fb> {
     cur_row: u32,
     cur_column: u32,
+    num_columns: u32,
+    num_rows: u32,
     framebuffer: &'fb mut FrameBuffer,
 }
 
-const MAX_NUM_COLUMNS: u32 = 640 / PADDED_FONT_WIDTH as u32;
-const MAX_NUM_ROWS: u32 = 480 / PADDED_FONT_HEIGHT as u32;
-
 impl Console<'_> {
     pub fn new(framebuffer: &mut FrameBuffer) -> Console {
-        for y in 0..framebuffer.get_height() {
-            for x in 0..framebuffer.get_width() {
-                framebuffer.set_pixel(x, y, Color::BLACK)
-            }
-        }
+        let num_columns = framebuffer.get_width() / PADDED_FONT_WIDTH as u32;
+        let num_rows = framebuffer.get_height() / PADDED_FONT_HEIGHT as u32;
 
-        Console {
+        let mut con = Console {
             framebuffer,
             cur_column: 0,
             cur_row: 0,
+            num_columns,
+            num_rows,
+        };
+        con.clear();
+        con
+    }
+
+    fn newline(&mut self) {
+        self.cur_column = 0;
+        self.cur_row += 1;
+        if self.cur_row == self.num_rows {
+            self.shift_console();
+        }
+    }
+
+    fn shift_console(&mut self) {
+        self.cur_row -= 1;
+        for y in 0..PADDED_FONT_HEIGHT as u32 * (self.num_rows - 1) {
+            for x in 0..self.framebuffer.get_width() {
+                self.framebuffer.set_pixel(
+                    x,
+                    y,
+                    self.framebuffer.get_pixel(x, y + PADDED_FONT_HEIGHT as u32),
+                )
+            }
+        }
+
+        for y in PADDED_FONT_HEIGHT as u32 * (self.num_rows - 1)..self.framebuffer.get_height() {
+            for x in 0..self.framebuffer.get_width() {
+                self.framebuffer.set_pixel(x, y, BACKGROUND_COLOR)
+            }
+        }
+    }
+
+    fn clear(&mut self) {
+        self.cur_row = 0;
+        self.cur_column = 0;
+        for y in 0..self.framebuffer.get_height() {
+            for x in 0..self.framebuffer.get_width() {
+                self.framebuffer.set_pixel(x, y, BACKGROUND_COLOR)
+            }
         }
     }
 }
@@ -39,53 +89,37 @@ impl Write for Console<'_> {
     fn write_char(&mut self, c: char) -> Result {
         match c {
             '\n' => {
+                self.newline();
+            }
+            '\r' => {
                 self.cur_column = 0;
-                self.cur_row += 1;
-                if self.cur_row >= MAX_NUM_ROWS {
-                    return Err(Error);
+            }
+            '\t' => {
+                for _ in 0..4 {
+                    if self.cur_column == self.num_rows - 1 {
+                        self.write_char('\n')?;
+                        break;
+                    }
+                    self.write_char(' ')?;
                 }
             }
             _ => {
                 let char_pixels = get_char_pixels(c);
                 for x in 0..PADDED_FONT_WIDTH {
                     for y in 0..PADDED_FONT_HEIGHT {
-                        let color = char_pixels[x][y];
-
-                        self.framebuffer.set_pixel(
-                            (x + self.cur_column as usize * PADDED_FONT_WIDTH) as u32,
-                            (y + self.cur_row as usize * PADDED_FONT_HEIGHT) as u32,
-                            color,
-                        );
-                        /*self.framebuffer.set_pixel(
-                            2 * (x + self.cur_column * 6) as u32,
-                            2 * (y + self.cur_row * 8) as u32,
-                            color,
-                        );
-                        self.framebuffer.set_pixel(
-                            2 * (x + self.cur_column * 6) as u32 + 1,
-                            2 * (y + self.cur_row * 8) as u32,
-                            color,
-                        );
-                        self.framebuffer.set_pixel(
-                            2 * (x + self.cur_column * 6) as u32,
-                            2 * (y + self.cur_row * 8) as u32 + 1,
-                            color,
-                        );
-                        self.framebuffer.set_pixel(
-                            2 * (x + self.cur_column * 6) as u32 + 1,
-                            2 * (y + self.cur_row * 8) as u32 + 1,
-                            color,
-                        );*/
+                        if char_pixels[x][y] {
+                            self.framebuffer.set_pixel(
+                                (x + self.cur_column as usize * PADDED_FONT_WIDTH) as u32,
+                                (y + self.cur_row as usize * PADDED_FONT_HEIGHT) as u32,
+                                FONT_COLOR,
+                            );
+                        }
                     }
                 }
 
                 self.cur_column += 1;
-                if self.cur_column == MAX_NUM_COLUMNS {
-                    self.cur_column = 0;
-                    self.cur_row += 1;
-                    if self.cur_row >= MAX_NUM_ROWS {
-                        return Err(Error);
-                    }
+                if self.cur_column == self.num_columns {
+                    self.newline();
                 }
             }
         }

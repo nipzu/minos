@@ -146,7 +146,7 @@ impl<'data> Iterator for MailboxResponseIterator<'data> {
         if self.cur >= self.end {
             return None;
         }
-        assert!(self.cur + 1 <= self.end);
+        assert!(self.cur < self.end);
         let buffer_len = self.response_data[self.cur + 1] as usize / 4;
         assert!(self.cur + 3 + buffer_len <= self.end);
         assert!(self.response_data[self.cur + 2] >> 31 == 1);

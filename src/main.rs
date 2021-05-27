@@ -19,105 +19,19 @@ mod mailbox;
 use core::fmt::Write;
 
 use console::Console;
-use framebuffer::{Color, FrameBuffer};
+use framebuffer::FrameBuffer;
 
 /// The starting point of the kernel, called from boot.s
 /// # Safety
 /// this function should only be called once from boot.s by one thread
 #[no_mangle]
 pub unsafe extern "C" fn kernel_start() -> ! {
-    /*
-    let mut message = MailboxMessageBuffer::<32>::new();
-    let _ = message.try_add_tag(Tag::GetDepth, [0, 0]);
-    let res = message.send();
-
-    for (i, (_, v)) in res.unwrap().iter().enumerate() {
-        write("\nresponse ");
-        print_hex(i as u32);
-        for n in v {
-            print_hex(*n);
-        }
-    }
-    */
-
     let mut framebuffer = FrameBuffer::init();
-
-    // let Color { r, g, b, a } = framebuffer.get_pixel(0, 0);
-
-    // write("default color:\n");
-    // print_hex(((r as u32) << 24) | ((g as u32) << 16) | ((b as u32) << 8) | a as u32);
-
-    for x in 0..framebuffer.get_width() {
-        for y in 0..framebuffer.get_height() {
-            framebuffer.set_pixel(
-                x,
-                y,
-                Color {
-                    r: 0,
-                    g: (x * 255 / framebuffer.get_width()) as u8,
-                    b: (y * 255 / framebuffer.get_height()) as u8,
-                    a: 255,
-                },
-            );
-        }
-    }
-
     let mut console = Console::new(&mut framebuffer);
 
-    console.write_str(include_str!("../aarch64-raspi3.json"));
-
-    /*for (i, c) in (' '..='~').chain(Some('\u{FFFD}')).enumerate() {
-        let char_pixels = font::get_char_pixels(c);
-        for x in 0..6 {
-            for y in 0..8 {
-                let color = if char_pixels[x][y] {
-                    Color {
-                        r: 255,
-                        g: 255,
-                        b: 255,
-                        a: 255,
-                    }
-                } else {
-                    Color {
-                        r: 0,
-                        g: 0,
-                        b: 0,
-                        a: 255,
-                    }
-                };
-
-                framebuffer.set_pixel(
-                    2 * (x + (i % 16) * 6) as u32,
-                    2 * (y + (i / 16) * 8) as u32,
-                    color,
-                );
-                framebuffer.set_pixel(
-                    2 * (x + (i % 16) * 6) as u32 + 1,
-                    2 * (y + (i / 16) * 8) as u32,
-                    color,
-                );
-                framebuffer.set_pixel(
-                    2 * (x + (i % 16) * 6) as u32,
-                    2 * (y + (i / 16) * 8) as u32 + 1,
-                    color,
-                );
-                framebuffer.set_pixel(
-                    2 * (x + (i % 16) * 6) as u32 + 1,
-                    2 * (y + (i / 16) * 8) as u32 + 1,
-                    color,
-                );
-            }
-        }
-    }*/
-
-    // let Color { r, g, b, a } = framebuffer.get_pixel(0, 0);
-
-    // write("new color:\n");
-    // print_hex(((r as u32) << 24) | ((g as u32) << 16) | ((b as u32) << 8) | a as u32);
-
-    loop {
-        // writec(getc())
-    }
+    write!(console, "{}", include_str!("../aarch64-raspi3.json")).unwrap();
+    
+    loop {}
 }
 
 #[panic_handler]
