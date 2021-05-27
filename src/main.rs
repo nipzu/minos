@@ -64,9 +64,7 @@ pub unsafe extern "C" fn kernel_start() -> ! {
 
     let mut console = Console::new(&mut framebuffer);
 
-    console.write_str(
-        include_str!("../aarch64-raspi3.json")
-    );
+    console.write_str(include_str!("../aarch64-raspi3.json"));
 
     /*for (i, c) in (' '..='~').chain(Some('\u{FFFD}')).enumerate() {
         let char_pixels = font::get_char_pixels(c);

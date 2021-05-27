@@ -1,12 +1,17 @@
 from PIL import Image
 
-with open("font_data.txt","w") as font_out:
-  font_in = Image.open("font.png")
+input_file = input("input file: ")
+output_file = input("output file: ")
+font_width = int(input("font width: "))
+font_height = int(input("font height: "))
+
+with open(output_file,"w") as font_out:
+  font_in = Image.open(input_file)
   b = 0
   i = 0
   font_out.write("[")
-  for i in range(48 * 96):
-    if font_in.getpixel((i % 96, i // 96)) == 1:
+  for i in range(font_width * font_height * 96):
+    if font_in.getpixel((i % (font_width * 16), i // (font_width * 16))) == 1:
       b += 2**(i % 8)
     if (i + 1) % 8 == 0:
       font_out.write(str(b) + ",")

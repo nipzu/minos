@@ -1,6 +1,6 @@
 use core::fmt::{Error, Result, Write};
 
-use crate::font::get_char_pixels;
+use crate::font::{get_char_pixels, PADDED_FONT_WIDTH, PADDED_FONT_HEIGHT};
 use crate::framebuffer::{Color, FrameBuffer};
 
 pub struct Console<'fb> {
@@ -9,8 +9,8 @@ pub struct Console<'fb> {
     framebuffer: &'fb mut FrameBuffer,
 }
 
-const MAX_NUM_COLUMNS: u32 = 100;
-const MAX_NUM_ROWS: u32 = 30;
+const MAX_NUM_COLUMNS: u32 = 640 / PADDED_FONT_WIDTH as u32;
+const MAX_NUM_ROWS: u32 = 480 / PADDED_FONT_HEIGHT as u32;
 
 impl Console<'_> {
     pub fn new(framebuffer: &mut FrameBuffer) -> Console {
@@ -47,13 +47,13 @@ impl Write for Console<'_> {
             }
             _ => {
                 let char_pixels = get_char_pixels(c);
-                for x in 0..6 {
-                    for y in 0..8 {
-                        let color = char_pixels[x as usize][y as usize];
+                for x in 0..PADDED_FONT_WIDTH {
+                    for y in 0..PADDED_FONT_HEIGHT {
+                        let color = char_pixels[x][y];
 
                         self.framebuffer.set_pixel(
-                            (x + self.cur_column * 6) as u32,
-                            (y + self.cur_row * 8) as u32,
+                            (x + self.cur_column as usize * PADDED_FONT_WIDTH) as u32,
+                            (y + self.cur_row as usize * PADDED_FONT_HEIGHT) as u32,
                             color,
                         );
                         /*self.framebuffer.set_pixel(
