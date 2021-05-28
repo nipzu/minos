@@ -1,6 +1,8 @@
-use core::fmt::{Result, Write};
-
-use spin::{lazy::Lazy, mutex::spin::SpinMutex};
+use core::{
+    cell::UnsafeCell,
+    fmt::{Result, Write},
+    mem::MaybeUninit,
+};
 
 mod font;
 mod framebuffer;
@@ -22,7 +24,7 @@ const FONT_COLOR: Color = Color {
     a: 255,
 };
 
-pub static CONSOLE: Lazy<SpinMutex<Console>> = Lazy::new(Console::init);
+pub static CONSOLE: NoLock<Console> = NoLock::<Console>::uninit();
 
 unsafe impl Send for Console {}
 
@@ -34,8 +36,35 @@ pub struct Console {
     framebuffer: Framebuffer,
 }
 
+pub struct NoLock<T> {
+    data: UnsafeCell<MaybeUninit<T>>,
+}
+
+unsafe impl<T> Sync for NoLock<T> {}
+
+impl NoLock<Console> {
+    const fn uninit() -> NoLock<Console> {
+        NoLock {
+            data: UnsafeCell::new(MaybeUninit::uninit()),
+        }
+    }
+
+    /// Safety: this function should be called exactly once
+    /// before any calls to `lock()`
+    pub unsafe fn init(&self) {
+        (*self.data.get()) = MaybeUninit::new(Console::init());
+    }
+
+    /// Safety:
+    /// - the value must be initialized before calling this
+    /// - only one mutable reference at any time
+    pub unsafe fn lock(&self) -> &mut Console {
+        (*self.data.get()).assume_init_mut()
+    }
+}
+
 impl Console {
-    pub fn init() -> SpinMutex<Console> {
+    pub fn init() -> Console {
         let framebuffer = Framebuffer::init();
         let num_columns = framebuffer.get_width() / PADDED_FONT_WIDTH as u32;
         let num_rows = framebuffer.get_height() / PADDED_FONT_HEIGHT as u32;
@@ -49,44 +78,25 @@ impl Console {
         };
         con.clear();
 
-        SpinMutex::new(con)
+        con
     }
 
     fn newline(&mut self) {
         self.cur_column = 0;
         self.cur_row += 1;
         if self.cur_row == self.num_rows {
-            self.shift_console();
-        }
-    }
-
-    fn shift_console(&mut self) {
-        self.cur_row -= 1;
-        for y in 0..PADDED_FONT_HEIGHT as u32 * (self.num_rows - 1) {
-            for x in 0..self.framebuffer.get_width() {
-                self.framebuffer.set_pixel(
-                    x,
-                    y,
-                    self.framebuffer.get_pixel(x, y + PADDED_FONT_HEIGHT as u32),
-                )
-            }
-        }
-
-        for y in PADDED_FONT_HEIGHT as u32 * (self.num_rows - 1)..self.framebuffer.get_height() {
-            for x in 0..self.framebuffer.get_width() {
-                self.framebuffer.set_pixel(x, y, BACKGROUND_COLOR)
-            }
+            self.cur_row -= 1;
+            self.framebuffer
+                .shift_up(PADDED_FONT_HEIGHT as u32, BACKGROUND_COLOR);
         }
     }
 
     fn clear(&mut self) {
         self.cur_row = 0;
         self.cur_column = 0;
-        for y in 0..self.framebuffer.get_height() {
-            for x in 0..self.framebuffer.get_width() {
-                self.framebuffer.set_pixel(x, y, BACKGROUND_COLOR)
-            }
-        }
+        // this clears the screen
+        self.framebuffer
+            .shift_up(self.framebuffer.get_height(), BACKGROUND_COLOR);
     }
 }
 

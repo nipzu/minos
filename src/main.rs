@@ -7,6 +7,7 @@
 #![feature(global_asm)]
 #![feature(panic_info_message)]
 #![feature(decl_macro)]
+#![feature(maybe_uninit_ref)]
 #![no_std]
 #![no_main]
 
@@ -16,6 +17,7 @@ mod console;
 mod macros;
 mod mailbox;
 
+use console::CONSOLE;
 use macros::*;
 
 // TODO: split mailbox tags into different types
@@ -25,14 +27,12 @@ use macros::*;
 /// this function should only be called once from boot.s by one thread
 #[no_mangle]
 pub unsafe extern "C" fn kernel_start() -> ! {
-    // make sure this is first so we don't
-    // initialize the console while panicking
+    // this must be initialized before use
+    CONSOLE.init();
+
     println!("[OK]: initialized console");
-    let mut i = 0u64;
-    loop {
-        println!("{}", i);
-        i += 1;
-    }
+
+    panic!()
 }
 
 #[panic_handler]

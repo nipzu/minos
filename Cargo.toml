@@ -8,6 +8,3 @@ panic = "abort"
 
 [profile.release]
 panic = "abort"
-
-[dependencies]
-spin = { version = "0.9", default-features = false, features = ["spin_mutex", "lazy"] }

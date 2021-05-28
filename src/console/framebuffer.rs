@@ -9,43 +9,6 @@ pub struct Color {
 }
 
 impl Color {
-    unsafe fn read_address(address: *const u8, format: ColorFormat) -> Color {
-        match format {
-            ColorFormat::RGBA32 => Color {
-                r: address.offset(0).read_volatile(),
-                g: address.offset(1).read_volatile(),
-                b: address.offset(2).read_volatile(),
-                a: address.offset(3).read_volatile(),
-            },
-            ColorFormat::BGRA32 => Color {
-                b: address.offset(0).read_volatile(),
-                g: address.offset(1).read_volatile(),
-                r: address.offset(2).read_volatile(),
-                a: address.offset(3).read_volatile(),
-            },
-            ColorFormat::RGB16 => {
-                let b0 = address.offset(0).read_volatile();
-                let b1 = address.offset(1).read_volatile();
-                Color {
-                    r: b1 & 0b_1111_1000,
-                    g: (b1 << 5) | ((b0 & 0b_1110_0000) >> 3),
-                    b: b0 << 3,
-                    a: 255,
-                }
-            }
-            ColorFormat::BGR16 => {
-                let b0 = address.offset(0).read_volatile();
-                let b1 = address.offset(1).read_volatile();
-                Color {
-                    b: b1 & 0b_1111_1000,
-                    g: (b1 << 5) | ((b0 & 0b_1110_0000) >> 3),
-                    r: b0 << 3,
-                    a: 255,
-                }
-            }
-        }
-    }
-
     unsafe fn write_address(self, address: *mut u8, format: ColorFormat) {
         let Color { r, g, b, a } = self;
         match format {
@@ -184,21 +147,6 @@ impl Framebuffer {
         }
     }
 
-    pub fn get_pixel(&self, x: u32, y: u32) -> Color {
-        let x = x as isize;
-        let y = y as isize;
-        assert!(x < self.width);
-        assert!(y < self.height);
-
-        let pixel_size = self.format.size();
-        let offset = (y * self.width + x) * pixel_size;
-
-        unsafe {
-            let address = self.buffer_addr.offset(offset);
-            Color::read_address(address, self.format)
-        }
-    }
-
     pub fn set_pixel(&mut self, x: u32, y: u32, color: Color) {
         let x = x as isize;
         let y = y as isize;
@@ -220,6 +168,118 @@ impl Framebuffer {
 
     pub fn get_height(&self) -> u32 {
         self.height as u32
+    }
+
+    pub fn shift_up(&mut self, amount: u32, fill_color: Color) {
+        match self.format.size() {
+            2 => {
+                if self.get_width() % 8 == 0 {
+                    unsafe {
+                        let mut fill_data = 0u128;
+                        let fill_data_ptr = (&mut fill_data as *mut u128).cast::<u8>();
+                        for i in 0..8 {
+                            fill_color.write_address(fill_data_ptr.offset(2 * i), self.format);
+                        }
+                        self.shift_up_128_bit_aligned(amount as isize, self.width / 8, fill_data)
+                    }
+                } else {
+                    unsafe { self.shift_up_16_bit(amount as isize, fill_color) }
+                }
+            }
+            4 => {
+                if self.get_width() % 4 == 0 {
+                    unsafe {
+                        let mut fill_data = 0u128;
+                        let fill_data_ptr = (&mut fill_data as *mut u128).cast::<u8>();
+                        for i in 0..4 {
+                            fill_color.write_address(fill_data_ptr.offset(4 * i), self.format);
+                        }
+                        self.shift_up_128_bit_aligned(amount as isize, self.width / 4, fill_data)
+                    }
+                } else {
+                    unsafe { self.shift_up_32_bit(amount as isize, fill_color) }
+                }
+            }
+            _ => unreachable!(),
+        }
+    }
+
+    unsafe fn shift_up_16_bit(&mut self, amount: isize, fill_color: Color) {
+        let mut fill_color_value = 0u16;
+        fill_color.write_address(
+            (&mut fill_color_value as *mut u16).cast::<u8>(),
+            self.format,
+        );
+
+        for y in 0..self.height.saturating_sub(amount) {
+            for x in 0..self.width {
+                (self.buffer_addr as *mut u16)
+                    .offset(y * self.width + x)
+                    .write_volatile(
+                        (self.buffer_addr as *mut u16)
+                            .offset((y + amount) * self.width + x)
+                            .read_volatile(),
+                    )
+            }
+        }
+
+        for y in self.height.saturating_sub(amount)..self.height {
+            for x in 0..self.width {
+                (self.buffer_addr as *mut u16)
+                    .offset(y * self.width + x)
+                    .write_volatile(fill_color_value);
+            }
+        }
+    }
+
+    unsafe fn shift_up_32_bit(&mut self, amount: isize, fill_color: Color) {
+        let mut fill_color_value = 0u32;
+        fill_color.write_address(
+            (&mut fill_color_value as *mut u32).cast::<u8>(),
+            self.format,
+        );
+
+        for y in 0..self.height.saturating_sub(amount) {
+            for x in 0..self.width {
+                (self.buffer_addr as *mut u32)
+                    .offset(y * self.width + x)
+                    .write_volatile(
+                        (self.buffer_addr as *mut u32)
+                            .offset((y + amount) * self.width + x)
+                            .read_volatile(),
+                    )
+            }
+        }
+
+        for y in self.height.saturating_sub(amount)..self.height {
+            for x in 0..self.width {
+                (self.buffer_addr as *mut u32)
+                    .offset(y * self.width + x)
+                    .write_volatile(fill_color_value);
+            }
+        }
+    }
+
+    unsafe fn shift_up_128_bit_aligned(&mut self, amount: isize, width_u128s: isize, fill: u128) {
+        for y in 0..self.height.saturating_sub(amount) {
+            for x in 0..width_u128s {
+                (self.buffer_addr as *mut u128)
+                    .offset(y * width_u128s + x)
+                    .write_volatile(
+                        (self.buffer_addr as *mut u128)
+                            .offset((y + amount) * width_u128s + x)
+                            .read_volatile(),
+                    )
+            }
+        }
+
+        for y in self.height.saturating_sub(amount)..self.height {
+            for x in 0..width_u128s {
+                (self.buffer_addr as *mut u128)
+                    .offset(y * width_u128s + x)
+                    .write_volatile(fill);
+            }
+        }
     }
 }
 
