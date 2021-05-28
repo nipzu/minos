@@ -30,9 +30,9 @@ pub unsafe extern "C" fn kernel_start() -> ! {
     // this must be initialized before use
     CONSOLE.init();
 
-    println!("[OK]: initialized console");
+    println!("[INFO]: initialized console");
 
-    panic!()
+    loop {}
 }
 
 #[panic_handler]
