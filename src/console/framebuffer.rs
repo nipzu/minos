@@ -171,6 +171,29 @@ impl Framebuffer {
     }
 
     pub fn shift_up(&mut self, amount: u32, fill_color: Color) {
+        let amount = amount as isize;
+        let dst = self.buffer_addr;
+        let src = unsafe {
+            self.buffer_addr
+                .offset(amount * self.width * self.format.size())
+        };
+
+        /*unsafe {
+            volatile_copy_memory(
+                dst as *mut u128,
+                src as *const u128,
+                (self.height.saturating_sub(amount) * self.width / 4) as usize,
+            );
+        }*/
+
+        unsafe {
+            crate::memory::volatile_copy_forwards_aligned(
+                src as *mut u128,
+                dst as *mut u128,
+                (self.height.saturating_sub(amount) * self.width * self.format.size()) as usize,
+            );
+        }
+
         match self.format.size() {
             2 => {
                 if self.get_width() % 8 == 0 {
@@ -211,7 +234,7 @@ impl Framebuffer {
             self.format,
         );
 
-        for y in 0..self.height.saturating_sub(amount) {
+        /*for y in 0..self.height.saturating_sub(amount) {
             for x in 0..self.width {
                 (self.buffer_addr as *mut u16)
                     .offset(y * self.width + x)
@@ -221,7 +244,7 @@ impl Framebuffer {
                             .read_volatile(),
                     )
             }
-        }
+        }*/
 
         for y in self.height.saturating_sub(amount)..self.height {
             for x in 0..self.width {
@@ -239,7 +262,7 @@ impl Framebuffer {
             self.format,
         );
 
-        for y in 0..self.height.saturating_sub(amount) {
+        /*for y in 0..self.height.saturating_sub(amount) {
             for x in 0..self.width {
                 (self.buffer_addr as *mut u32)
                     .offset(y * self.width + x)
@@ -249,7 +272,7 @@ impl Framebuffer {
                             .read_volatile(),
                     )
             }
-        }
+        }*/
 
         for y in self.height.saturating_sub(amount)..self.height {
             for x in 0..self.width {
@@ -261,7 +284,7 @@ impl Framebuffer {
     }
 
     unsafe fn shift_up_128_bit_aligned(&mut self, amount: isize, width_u128s: isize, fill: u128) {
-        for y in 0..self.height.saturating_sub(amount) {
+        /*for y in 0..self.height.saturating_sub(amount) {
             for x in 0..width_u128s {
                 (self.buffer_addr as *mut u128)
                     .offset(y * width_u128s + x)
@@ -271,7 +294,7 @@ impl Framebuffer {
                             .read_volatile(),
                     )
             }
-        }
+        }*/
 
         for y in self.height.saturating_sub(amount)..self.height {
             for x in 0..width_u128s {

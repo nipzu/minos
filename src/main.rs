@@ -8,6 +8,7 @@
 #![feature(panic_info_message)]
 #![feature(decl_macro)]
 #![feature(maybe_uninit_ref)]
+#![feature(core_intrinsics)]
 #![no_std]
 #![no_main]
 
@@ -16,6 +17,7 @@ global_asm!(include_str!("boot.s"));
 mod console;
 mod macros;
 mod mailbox;
+mod memory;
 
 use console::CONSOLE;
 use macros::*;
@@ -32,13 +34,27 @@ pub unsafe extern "C" fn kernel_start() -> ! {
 
     println!("[INFO]: initialized console");
 
-    loop {}
+    println!("[INFO]: testing memcpy");
+
+    memory::test();
+
+    //let mut i = 0;
+    loop {
+        //println!("{}", i);
+        //i += 1;
+    }
+
+    // TODO:
+    // interrupts
+    // MMU
+    // keyboard
+    // files
+    // privilege levels
 }
 
 #[panic_handler]
 fn panic(panic_info: &core::panic::PanicInfo) -> ! {
-    // TODO: what if we panic while initializing the console?
-    // probably doesn't matter, we'd just deadlock
+    // TODO: what if we panic before/while initializing the console?
 
     match panic_info.message() {
         Some(m) => println!("panicked with message: {}", m),
