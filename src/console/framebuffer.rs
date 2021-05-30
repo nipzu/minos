@@ -1,3 +1,5 @@
+use core::intrinsics::volatile_copy_memory;
+
 use crate::mailbox::{MailboxMessageBuffer, MailboxTagType};
 
 #[derive(Clone, Copy, Debug)]
@@ -175,21 +177,13 @@ impl Framebuffer {
         let dst = self.buffer_addr;
         let src = unsafe {
             self.buffer_addr
-                .offset(amount * self.width * self.format.size())
+                .offset(amount * self.width * self.format.size()) as *const u8
         };
 
-        /*unsafe {
-            volatile_copy_memory(
-                dst as *mut u128,
-                src as *const u128,
-                (self.height.saturating_sub(amount) * self.width / 4) as usize,
-            );
-        }*/
-
         unsafe {
-            crate::memory::volatile_copy_forwards_aligned(
-                src as *mut u128,
-                dst as *mut u128,
+            volatile_copy_memory(
+                dst,
+                src,
                 (self.height.saturating_sub(amount) * self.width * self.format.size()) as usize,
             );
         }
@@ -234,18 +228,6 @@ impl Framebuffer {
             self.format,
         );
 
-        /*for y in 0..self.height.saturating_sub(amount) {
-            for x in 0..self.width {
-                (self.buffer_addr as *mut u16)
-                    .offset(y * self.width + x)
-                    .write_volatile(
-                        (self.buffer_addr as *mut u16)
-                            .offset((y + amount) * self.width + x)
-                            .read_volatile(),
-                    )
-            }
-        }*/
-
         for y in self.height.saturating_sub(amount)..self.height {
             for x in 0..self.width {
                 (self.buffer_addr as *mut u16)
@@ -262,18 +244,6 @@ impl Framebuffer {
             self.format,
         );
 
-        /*for y in 0..self.height.saturating_sub(amount) {
-            for x in 0..self.width {
-                (self.buffer_addr as *mut u32)
-                    .offset(y * self.width + x)
-                    .write_volatile(
-                        (self.buffer_addr as *mut u32)
-                            .offset((y + amount) * self.width + x)
-                            .read_volatile(),
-                    )
-            }
-        }*/
-
         for y in self.height.saturating_sub(amount)..self.height {
             for x in 0..self.width {
                 (self.buffer_addr as *mut u32)
@@ -284,18 +254,6 @@ impl Framebuffer {
     }
 
     unsafe fn shift_up_128_bit_aligned(&mut self, amount: isize, width_u128s: isize, fill: u128) {
-        /*for y in 0..self.height.saturating_sub(amount) {
-            for x in 0..width_u128s {
-                (self.buffer_addr as *mut u128)
-                    .offset(y * width_u128s + x)
-                    .write_volatile(
-                        (self.buffer_addr as *mut u128)
-                            .offset((y + amount) * width_u128s + x)
-                            .read_volatile(),
-                    )
-            }
-        }*/
-
         for y in self.height.saturating_sub(amount)..self.height {
             for x in 0..width_u128s {
                 (self.buffer_addr as *mut u128)

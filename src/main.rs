@@ -34,14 +34,12 @@ pub unsafe extern "C" fn kernel_start() -> ! {
 
     println!("[INFO]: initialized console");
 
-    println!("[INFO]: testing memcpy");
-
     memory::test();
 
-    //let mut i = 0;
+    let mut i = 0;
     loop {
-        //println!("{}", i);
-        //i += 1;
+        println!("{}", i);
+        i += 1;
     }
 
     // TODO:
