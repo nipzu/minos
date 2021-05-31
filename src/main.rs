@@ -22,9 +22,6 @@ mod memory;
 use console::CONSOLE;
 use macros::*;
 
-
-static mut ABCDEF: [u8; 1024] = [0; 1024];
-
 // TODO: split mailbox tags into different types
 
 /// The starting point of the kernel, called from boot.s
@@ -36,34 +33,18 @@ pub unsafe extern "C" fn kernel_start() -> ! {
     
     // this must be initialized before use
     CONSOLE.init();
-    
 
     println!("[INFO]: initialized console");
 
     let el: u64;
-
     unsafe {
         asm!("mrs {}, CurrentEL", out(reg) el);
     }
-
     println!("execution level: {}", el >> 2);
-    println!("sizeof Console: {}", core::mem::size_of_val(&CONSOLE));
-
-    println!("{:?}", ABCDEF);
-
-    unsafe {
-        ABCDEF[100] = 69;
-    }
-
-    //println!("{:?}", ABCDEF);
 
     //memory::test();
 
-    //let mut i = 0;
-    loop {
-        //println!("{}", i);
-        //i += 1;
-    }
+    loop {}
 
     // TODO: test unaligned access
 
@@ -73,7 +54,7 @@ pub unsafe extern "C" fn kernel_start() -> ! {
     // MMU
     // keyboard
     // files
-    // execution levels
+    // execution levels: el2 -> el1 done
 }
 
 #[panic_handler]
