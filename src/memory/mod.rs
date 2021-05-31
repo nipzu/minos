@@ -1,5 +1,24 @@
 global_asm!(include_str!("memcpy.s"));
 
+#[inline(never)]
+#[no_mangle]
+pub unsafe fn zero_bss() {
+    let mut bss_start = (&mut _bss_start) as *mut u64;
+    let mut bss_end = (&mut _bss_end) as *mut u64;
+
+    //crate::println!("{:?}..{:?}", bss_start, bss_end);
+
+    while bss_start < bss_end {
+        bss_start.write_volatile(0);
+        bss_start = bss_start.offset(1);
+    }
+}
+
+extern "C" {
+    static mut _bss_start: u64;
+    static mut _bss_end: u64;
+}
+
 pub fn test() {
     crate::println!("[INFO]: testing memcpy");
     const N: usize = 2000;

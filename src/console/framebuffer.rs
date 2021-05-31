@@ -99,8 +99,8 @@ impl Framebuffer {
         for (tag, response_buffer) in response.iter() {
             match tag {
                 FramebufferTag::SetVirtualWidthHeight => {
-                    //assert!(dimensions.is_none());
-                    //assert!(response_buffer.len() >= 2);
+                    assert!(dimensions.is_none());
+                    assert!(response_buffer.len() >= 2);
                     dimensions = Some((response_buffer[0], response_buffer[1]));
                 }
                 FramebufferTag::SetVirtualOffset => {

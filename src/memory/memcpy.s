@@ -77,9 +77,8 @@ D_hw    .req    w16
 
 .globl memmove;
 .globl memcpy;
-.align 6
-    memmove:
-    memcpy:
+memmove:
+memcpy:
     mov     dst, dstin
 
     /* Branch to backward version if src < dst */
