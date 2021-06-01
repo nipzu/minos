@@ -30,28 +30,28 @@ ret_val .req    x0  /* Aliased with dstin */
 dst     .req    x3
 
 /* Temporary reg */
-tmp1    .req    x6
-tmp2    .req    x7
-tmp3    .req    x8
+tmp1    .req    x4
+tmp2    .req    x5
+tmp3    .req    x6
 
 /* Registers for copying large blocks */
-A_l     .req    x9
-A_h     .req    x10
-B_l     .req    x11
-B_h     .req    x12
-C_l     .req    x13
-C_h     .req    x14
-D_l     .req    x15
-D_h     .req    x16
+A_l     .req    x7
+A_h     .req    x8
+B_l     .req    x9
+B_h     .req    x10
+C_l     .req    x11
+C_h     .req    x12
+D_l     .req    x13
+D_h     .req    x14
 
-A_lw    .req    w9
-A_hw    .req    w10
-B_lw    .req    w11
-B_hw    .req    w12
-C_lw    .req    w13
-C_hw    .req    w14
-D_lw    .req    w15
-D_hw    .req    w16
+A_lw    .req    w7
+A_hw    .req    w8
+B_lw    .req    w9
+B_hw    .req    w10
+C_lw    .req    w11
+C_hw    .req    w12
+D_lw    .req    w13
+D_hw    .req    w14
 
 /*
    block                | src alignment | dst alignment | count

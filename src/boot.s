@@ -14,10 +14,6 @@ _start:
     // this is done by returning from an "exception"
     // to the address specified in elr_el2
 
-    // set return address from "exception"
-    ldr     x1, =kernel_start
-    msr     elr_el2, x1
-
     // the first 4 bits disable exceptions for now
     // the last 3 set the exectution level to el1
     // that uses a different stack pointer than el0
@@ -26,14 +22,22 @@ _start:
 
     // bit 31 enables aarch64 mode instead of aarch32
     // bit 1 seems to be set by default so we'll keep it
+    // it could probably even be commented out
     // it also seems to be hardcoded se can't be changed
     mov     x1, #(1 << 31)
     orr     x1, x1, #0b10
     msr     hcr_el2, x1
 
     // set stack pointer for execution level 1
+    // stack grows from 0x80000 downward
     ldr     x1, =_start
     msr     sp_el1, x1
+
+    // set return address from "exception"
+    // we start running kernel_start with
+    // the dtb pointer stored in x0
+    ldr     x1, =kernel_start
+    msr     elr_el2, x1
 
     // return from "exception"
     // takes us to kernel_start

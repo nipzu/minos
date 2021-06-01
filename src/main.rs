@@ -37,11 +37,8 @@ pub unsafe extern "C" fn kernel_start() -> ! {
     println!("[INFO]: initialized console");
 
     let el: u64;
-    unsafe {
-        asm!("mrs {}, CurrentEL", out(reg) el);
-    }
+    asm!("mrs {}, CurrentEL", out(reg) el);
     println!("execution level: {}", el >> 2);
-
     //memory::test();
 
     loop {}
