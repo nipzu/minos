@@ -188,6 +188,7 @@ impl Framebuffer {
             );
         }
 
+        // TODO: this is kinda bad
         match self.format.size() {
             2 => {
                 if self.get_width() % 8 == 0 {

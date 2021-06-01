@@ -18,6 +18,7 @@ mod console;
 mod macros;
 mod mailbox;
 mod memory;
+mod exceptions;
 
 use console::CONSOLE;
 use macros::*;
@@ -33,25 +34,29 @@ pub unsafe extern "C" fn kernel_start() -> ! {
     
     // this must be initialized before use
     CONSOLE.init();
-
     println!("[INFO]: initialized console");
 
+    exceptions::init_and_enable_exceptions();
+    println!("[INFO]: exceptions initialized and enabled");
+
     let el: u64;
-    asm!("mrs {}, CurrentEL", out(reg) el);
+    asm!("mrs {}, currentel", out(reg) el);
     println!("execution level: {}", el >> 2);
     //memory::test();
+
+    let x = (0xfffffffffff0 as *const u64).read_volatile();
+    println!("x: {}", x);
 
     loop {}
 
     // TODO: test unaligned access
 
     // TODO:
-    // interrupts
-    // exceptions
+    // execution levels: el2 -> el1 done
+    // interrupts and exceptions: barebones version
     // MMU
     // keyboard
     // files
-    // execution levels: el2 -> el1 done
 }
 
 #[panic_handler]
