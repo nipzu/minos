@@ -36,25 +36,33 @@ pub unsafe extern "C" fn kernel_start() -> ! {
     CONSOLE.init();
     println!("[INFO]: initialized console");
 
+    let el: u64;
+    asm!("mrs {}, currentel", out(reg) el);
+    println!("[INFO]: execution level: {}", el >> 2);
+
     exceptions::init_and_enable_exceptions();
     println!("[INFO]: exceptions initialized and enabled");
 
-    let el: u64;
-    asm!("mrs {}, currentel", out(reg) el);
-    println!("execution level: {}", el >> 2);
+
+    memory::initialize_and_enable_mmu();
+    println!("[INFO]: mmu initialized and enabled");
     //memory::test();
 
-    let x = (0xfffffffffff0 as *const u64).read_volatile();
-    println!("x: {}", x);
+    let x = (0x101 as *const u64).read_volatile();
+    println!("x: 0x{:x}", x);
 
-    loop {}
+    let mut i = 0;
+    loop {
+        println!("{}", i);
+        i += 1;
+    }
 
     // TODO: test unaligned access
 
     // TODO:
     // execution levels: el2 -> el1 done
     // interrupts and exceptions: barebones version
-    // MMU
+    // MMU: identity done
     // keyboard
     // files
 }

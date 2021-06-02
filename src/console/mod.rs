@@ -117,11 +117,8 @@ impl Write for Console {
                 self.cur_column = 0;
             }
             '\t' => {
-                for _ in 0..4 {
-                    if self.cur_column == self.num_rows - 1 {
-                        self.write_char('\n')?;
-                        break;
-                    }
+                self.write_char(' ')?;
+                while self.cur_column % 4 != 0 {
                     self.write_char(' ')?;
                 }
             }

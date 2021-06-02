@@ -1,18 +1,57 @@
+use core::cell::UnsafeCell;
+
 global_asm!(include_str!("memcpy.s"));
 
 extern "C" {
-    static mut _bss_start: u64;
-    static mut _bss_end: u64;
+    static _bss_start: UnsafeCell<u64>;
+    static _bss_end: UnsafeCell<u64>;
+}
+
+static BASE_TRANSLATION_TABLE: TranslationTable = TranslationTable::new();
+
+#[repr(C, align(4096))]
+struct TranslationTable {
+    entries: UnsafeCell<[u64; 512]>,
+}
+
+unsafe impl Sync for TranslationTable {}
+
+impl TranslationTable {
+    const fn new() ->  TranslationTable {
+        TranslationTable {
+            entries: UnsafeCell::new([0; 512]),
+        }
+    }
 }
 
 pub unsafe fn zero_bss() {
-    let mut bss_start = (&mut _bss_start) as *mut u64;
-    let bss_end = (&mut _bss_end) as *mut u64;
+    let mut bss_start =_bss_start.get();
+    let bss_end = _bss_end.get();
 
     while bss_start < bss_end {
         bss_start.write_volatile(0);
         bss_start = bss_start.offset(1);
     }
+}
+
+pub unsafe fn initialize_and_enable_mmu() {
+    let base_table_pointer = BASE_TRANSLATION_TABLE.entries.get();
+    asm!("msr ttbr0_el1, {}", in(reg) base_table_pointer);
+
+    let memory_attributes: u64 = 0xff;
+    asm!("msr mair_el1, {}", in(reg) memory_attributes);
+
+    // disables ttbr1_el1 if set
+    const EDB1_BIT: u64 = 1 << 23; 
+    let control_value = EDB1_BIT | 28 | (1 << 8) | (1 << 10) | (3 << 12);
+    asm!("msr tcr_el1, {}", in(reg) control_value);
+
+    let block_descriptor: u64 = 0x401;
+    BASE_TRANSLATION_TABLE.entries.get().cast::<u64>().write_volatile(block_descriptor);
+
+    let system_control_value: u64 = 0b101 | (1 << 12);
+    asm!("dsb sy");
+    asm!("msr sctlr_el1, {}", in(reg) system_control_value);
 }
 
 pub fn _test() {

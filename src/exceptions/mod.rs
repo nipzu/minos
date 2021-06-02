@@ -4,7 +4,7 @@ pub unsafe fn init_and_enable_exceptions() {
     let vector_addr: u64;
     asm!("ldr {}, =exception_vector_table", out(reg) vector_addr);
     asm!("msr vbar_el1, {}", in(reg) vector_addr);
-    asm!("msr DAIFClr, #0b1111");
+    asm!("msr daifclr, #0b1111");
 }
 
 #[derive(Debug)]
