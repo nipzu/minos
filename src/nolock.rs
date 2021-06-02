@@ -17,6 +17,6 @@ impl<T> NoLock<T> {
     /// - the value must be initialized before calling this
     /// - only one mutable reference at any time
     pub unsafe fn lock(&self) -> &mut T {
-        self.value.get().as_mut().unwrap()
+        &mut *self.value.get()
     }
 }

@@ -49,14 +49,11 @@ pub unsafe extern "C" fn kernel_start() -> ! {
     println!("[INFO]: mmu initialized and enabled");
     //memory::test();
 
-    let x = (0x101 as *const u64).read_volatile();
-    println!("x: 0x{:x}", x);
-
-    let mut i = 0;
-    loop {
-        println!("{}", i);
-        i += 1;
+    for i in 0..0x10 {
+        println!("0x{:x}", ((8 * i) as *const u64).read_volatile());
     }
+
+    loop {}
 
     // TODO: test unaligned access
 

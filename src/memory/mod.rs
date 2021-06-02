@@ -13,6 +13,8 @@ static BASE_TRANSLATION_TABLE: NoLock<TranslationTable> = NoLock::new(Translatio
 
 const ACCESS_FLAG_BIT: u64 = 1 << 10;
 const VALID_ENTRY_BIT: u64 = 0b1;
+const TRANSLATION_TABLE_ADDRESS_MASK: u64 = 0x0000_ffff_ffff_f000;
+
 #[repr(C, align(4096))]
 struct TranslationTable {
     entries: [TranslationTableEntry; 512],
@@ -30,7 +32,7 @@ impl TranslationTableEntry {
     }
 
     const fn block_descriptor(address: u64) -> TranslationTableEntry {
-        let masked_address = address & 0x0000_ffff_ffff_f000;
+        let masked_address = address & TRANSLATION_TABLE_ADDRESS_MASK;
         TranslationTableEntry {
             value: masked_address | ACCESS_FLAG_BIT | VALID_ENTRY_BIT,
         }
