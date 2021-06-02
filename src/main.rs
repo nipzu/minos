@@ -15,12 +15,14 @@
 global_asm!(include_str!("boot.s"));
 
 mod console;
+mod exceptions;
 mod macros;
 mod mailbox;
 mod memory;
-mod exceptions;
+mod nolock;
 
-use console::CONSOLE;
+use console::{Console, CONSOLE};
+use core::mem::MaybeUninit;
 use macros::*;
 
 // TODO: split mailbox tags into different types
@@ -31,9 +33,9 @@ use macros::*;
 #[no_mangle]
 pub unsafe extern "C" fn kernel_start() -> ! {
     memory::zero_bss();
-    
+
     // this must be initialized before use
-    CONSOLE.init();
+    *CONSOLE.lock() = MaybeUninit::new(Console::init());
     println!("[INFO]: initialized console");
 
     let el: u64;
@@ -42,7 +44,6 @@ pub unsafe extern "C" fn kernel_start() -> ! {
 
     exceptions::init_and_enable_exceptions();
     println!("[INFO]: exceptions initialized and enabled");
-
 
     memory::initialize_and_enable_mmu();
     println!("[INFO]: mmu initialized and enabled");

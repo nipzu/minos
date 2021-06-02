@@ -1,8 +1,9 @@
 use core::{
-    cell::UnsafeCell,
     fmt::{Result, Write},
     mem::MaybeUninit,
 };
+
+use crate::nolock::NoLock;
 
 mod font;
 mod framebuffer;
@@ -24,9 +25,7 @@ const FONT_COLOR: Color = Color {
     a: 255,
 };
 
-pub static CONSOLE: NoLock<Console> = NoLock::<Console>::uninit();
-
-unsafe impl Send for Console {}
+pub static CONSOLE: NoLock<MaybeUninit<Console>> = NoLock::new(MaybeUninit::uninit());
 
 pub struct Console {
     cur_row: u32,
@@ -34,33 +33,6 @@ pub struct Console {
     num_columns: u32,
     num_rows: u32,
     framebuffer: Framebuffer,
-}
-
-pub struct NoLock<T> {
-    data: UnsafeCell<MaybeUninit<T>>,
-}
-
-unsafe impl<T> Sync for NoLock<T> {}
-
-impl NoLock<Console> {
-    const fn uninit() -> NoLock<Console> {
-        NoLock {
-            data: UnsafeCell::new(MaybeUninit::uninit()),
-        }
-    }
-
-    /// Safety: this function should be called exactly once
-    /// before any calls to `lock()`
-    pub unsafe fn init(&self) {
-        (*self.data.get()) = MaybeUninit::new(Console::init());
-    }
-
-    /// Safety:
-    /// - the value must be initialized before calling this
-    /// - only one mutable reference at any time
-    pub unsafe fn lock(&self) -> &mut Console {
-        (*self.data.get()).assume_init_mut()
-    }
 }
 
 impl Console {

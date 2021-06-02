@@ -14,7 +14,11 @@ pub struct ExceptionFrame {
 }
 
 #[no_mangle]
-pub extern "C" fn handle_sync_exception(_frame: &mut ExceptionFrame, syndrome_reg: u64, fault_addr_reg: u64) {
+pub extern "C" fn handle_sync_exception(
+    _frame: &mut ExceptionFrame,
+    syndrome_reg: u64,
+    fault_addr_reg: u64,
+) {
     crate::println!("[ERROR]: synchronous exception caught");
     crate::println!("syndrome register: 0x{:016x}", syndrome_reg);
     crate::println!("fault address register: 0x{:016x}", fault_addr_reg);
@@ -23,7 +27,11 @@ pub extern "C" fn handle_sync_exception(_frame: &mut ExceptionFrame, syndrome_re
 }
 
 #[no_mangle]
-pub extern "C" fn handle_irq_exception(_frame: &mut ExceptionFrame, syndrome_reg: u64, fault_addr_reg: u64) {
+pub extern "C" fn handle_irq_exception(
+    _frame: &mut ExceptionFrame,
+    syndrome_reg: u64,
+    fault_addr_reg: u64,
+) {
     crate::println!("[ERROR]: IRQ exception caught");
     crate::println!("syndrome register: 0x{:016x}", syndrome_reg);
     crate::println!("fault address register: 0x{:016x}", fault_addr_reg);
@@ -31,7 +39,11 @@ pub extern "C" fn handle_irq_exception(_frame: &mut ExceptionFrame, syndrome_reg
 }
 
 #[no_mangle]
-pub extern "C" fn handle_fiq_exception(_frame: &mut ExceptionFrame, syndrome_reg: u64, fault_addr_reg: u64) {
+pub extern "C" fn handle_fiq_exception(
+    _frame: &mut ExceptionFrame,
+    syndrome_reg: u64,
+    fault_addr_reg: u64,
+) {
     crate::println!("[ERROR]: FIQ exception caught");
     crate::println!("syndrome register: 0x{:016x}", syndrome_reg);
     crate::println!("fault address register: 0x{:016x}", fault_addr_reg);
@@ -39,7 +51,11 @@ pub extern "C" fn handle_fiq_exception(_frame: &mut ExceptionFrame, syndrome_reg
 }
 
 #[no_mangle]
-pub extern "C" fn handle_serror_exception(_frame: &mut ExceptionFrame, syndrome_reg: u64, fault_addr_reg: u64) {
+pub extern "C" fn handle_serror_exception(
+    _frame: &mut ExceptionFrame,
+    syndrome_reg: u64,
+    fault_addr_reg: u64,
+) {
     crate::println!("[ERROR]: SError exception caught");
     crate::println!("syndrome register: 0x{:016x}", syndrome_reg);
     crate::println!("fault address register: 0x{:016x}", fault_addr_reg);
