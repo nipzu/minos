@@ -40,7 +40,7 @@ pub unsafe extern "C" fn kernel_start() -> ! {
 
     let el: u64;
     asm!("mrs {}, currentel", out(reg) el);
-    println!("[INFO]: execution level: {}", el >> 2);
+    println!("[INFO]: current execution level: el{}", el >> 2);
 
     exceptions::init_and_enable_exceptions();
     println!("[INFO]: exceptions initialized and enabled");
@@ -49,10 +49,9 @@ pub unsafe extern "C" fn kernel_start() -> ! {
     println!("[INFO]: mmu initialized and enabled");
     //memory::test();
 
-    for i in 0..0x10 {
-        println!("0x{:x}", ((8 * i) as *const u64).read_volatile());
-    }
+    //(0x81ec4 as *mut u64).write_volatile(42);
 
+    println!("[INFO]: looping forever...");
     loop {}
 
     // TODO: test unaligned access
@@ -63,6 +62,12 @@ pub unsafe extern "C" fn kernel_start() -> ! {
     // MMU: identity done
     // keyboard
     // files
+
+    // kernel: 
+    //  scheduler
+    //  mmu
+    //  basic fs
+    //  basic fb & console
 }
 
 #[panic_handler]

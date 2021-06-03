@@ -6,13 +6,17 @@ SECTIONS {
         *(.text.*)
     }
     .rodata : { *(.rodata) *(.rodata.*) }
+
+    . = ALIGN(4096);
+    _kernel_readonly_end = .;
+
     .data : { *(.data) *(.data.*) }
     .bss (NOLOAD) : {
         . = ALIGN(8);
         _bss_start = .;
         *(.bss) *(.bss.*)
         *(COMMON)
-        . = ALIGN(8);
+        . = ALIGN(4096);
         _bss_end = .;
     }
 

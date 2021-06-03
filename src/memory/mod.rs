@@ -7,6 +7,7 @@ global_asm!(include_str!("memcpy.s"));
 extern "C" {
     static _bss_start: UnsafeCell<u64>;
     static _bss_end: UnsafeCell<u64>;
+    static _kernel_readonly_end: UnsafeCell<u64>;
 }
 
 static BASE_TRANSLATION_TABLE: NoLock<TranslationTable> = NoLock::new(TranslationTable::empty());
@@ -82,6 +83,10 @@ pub unsafe fn initialize_and_enable_mmu() {
     let system_control_value: u64 = 0b101 | (1 << 12);
     asm!("dsb sy");
     asm!("msr sctlr_el1, {}", in(reg) system_control_value);
+
+    crate::println!("kernel_readonly_end: {:?}", _kernel_readonly_end.get());
+    crate::println!("bss_start: {:?}", _bss_start.get());
+    crate::println!("bss_end: {:?}", _bss_end.get());
 }
 
 pub fn _test() {

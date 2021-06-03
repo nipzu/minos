@@ -1,4 +1,4 @@
-global_asm!(include_str!("vector_table.s"));
+global_asm!(include_str!("vectortable.s"));
 
 pub unsafe fn init_and_enable_exceptions() {
     let vector_addr: u64;
