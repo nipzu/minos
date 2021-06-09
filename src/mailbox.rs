@@ -93,6 +93,7 @@ impl<const LEN: usize, T: MailboxTagType> MailboxMessageBuffer<LEN, T> {
             asm!("nop");
         }
 
+        // TODO: should we pin or something, are there any guarantees that self.data won't be moved
         let message = (self.data.as_ptr() as u32 & !0xF) | MAILBOX_PROPERTY_CHANNEL as u32;
 
         MAILBOX_WRITE_ADDR.write_volatile(message);
