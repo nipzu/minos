@@ -53,16 +53,14 @@ pub unsafe extern "C" fn kernel_start() -> ! {
 
     //(0x81ec4 as *mut u64).write_volatile(42);
 
-    // asm!("svc #0xdead");
-
-    //let x = AtomicI32::new(1);
-
-    //x.fetch_add(1, core::sync::atomic::Ordering::SeqCst);
-
-    //println!("{}", x.load(core::sync::atomic::Ordering::SeqCst));
+    asm!("svc #0xdead");
 
     println!("[INFO]: looping forever...");
-    loop {}
+    let mut i = 0;
+    loop {
+        println!("{}", i);
+        i += 1;
+    }
 
     // TODO: test unaligned access
 
@@ -73,7 +71,7 @@ pub unsafe extern "C" fn kernel_start() -> ! {
     // keyboard
     // files
 
-    // kernel: 
+    // kernel:
     //  scheduler
     //  mmu
     //  basic fs

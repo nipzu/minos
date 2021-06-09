@@ -10,3 +10,6 @@ panic = "abort"
 panic = "abort"
 # lto = true
 # codegen-units = 1
+
+[dependencies]
+spin = { version = "0.9", default-features = false, features = ["spin_mutex", "lazy"] } 

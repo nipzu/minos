@@ -1,5 +1,6 @@
 use core::cell::UnsafeCell;
 
+#[repr(C)]
 pub struct NoLock<T> {
     value: UnsafeCell<T>,
 }
