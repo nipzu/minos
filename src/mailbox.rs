@@ -26,6 +26,7 @@ pub struct MailboxMessageBuffer<const LEN: usize, T: MailboxTagType> {
 
 impl<const LEN: usize, T: MailboxTagType> MailboxMessageBuffer<LEN, T> {
     /// Creates a new `MailboxMessageBuffer` that can contain at most `4*LEN` bytes of data
+    ///
     /// # Panics
     /// This code will panic if `LEN < 3`
     pub fn new() -> Self {

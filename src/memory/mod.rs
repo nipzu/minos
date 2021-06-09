@@ -47,9 +47,11 @@ impl TranslationTable {
         }
     }
 
-    unsafe fn set_entry(&mut self, index: usize, entry: TranslationTableEntry) {
+    fn set_entry(&mut self, index: usize, entry: TranslationTableEntry) {
         assert!(index < 512);
-        self.entries.as_mut_ptr().add(index).write_volatile(entry);
+        unsafe {
+            self.entries.as_mut_ptr().add(index).write_volatile(entry);
+        }
     }
 }
 
