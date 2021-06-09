@@ -12,7 +12,7 @@ pub unsafe fn init_and_enable_exceptions() {
 #[derive(Debug)]
 #[repr(C)]
 pub struct ExceptionFrame {
-    registers: [u64; 30],
+    registers: [u64; 31],
 }
 
 const EXCEPTION_CLASS_MASK: u64 = 0b111111 << 26;
