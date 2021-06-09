@@ -9,6 +9,7 @@
 #![feature(decl_macro)]
 #![feature(maybe_uninit_ref)]
 #![feature(core_intrinsics)]
+#![feature(inline_const)]
 #![no_std]
 #![no_main]
 
@@ -20,9 +21,10 @@ mod macros;
 mod mailbox;
 mod memory;
 mod nolock;
+mod process;
 
 use console::{Console, CONSOLE};
-use core::mem::MaybeUninit;
+use core::{mem::MaybeUninit, sync::atomic::AtomicI32};
 use macros::*;
 
 // TODO: split mailbox tags into different types
@@ -50,6 +52,14 @@ pub unsafe extern "C" fn kernel_start() -> ! {
     //memory::test();
 
     //(0x81ec4 as *mut u64).write_volatile(42);
+
+    // asm!("svc #0xdead");
+
+    //let x = AtomicI32::new(1);
+
+    //x.fetch_add(1, core::sync::atomic::Ordering::SeqCst);
+
+    //println!("{}", x.load(core::sync::atomic::Ordering::SeqCst));
 
     println!("[INFO]: looping forever...");
     loop {}

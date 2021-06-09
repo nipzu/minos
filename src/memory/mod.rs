@@ -2,6 +2,8 @@ use core::cell::UnsafeCell;
 
 use crate::nolock::NoLock;
 
+mod pageallocator;
+
 global_asm!(include_str!("memcpy.s"));
 
 extern "C" {

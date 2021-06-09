@@ -1,0 +1,40 @@
+physical memory:
+
+0x0000_0000 - 0x3dff_ffff: partly identity mapped:
+
+0x0000_0000 -------------------
+
+reserved for ????
+
+0x????_???? -------------------
+
+kernel stack
+
+0x0008_0000 -------------------
+
+kernel text and data
+
+0x0020_0000 -------------------
+
+4k page tables
+
+0x0040_0000 -------------------
+
+pages
+
+0x3e00_0000 -------------------
+
+
+
+0x3e00_0000 - 0x3fff_ffff: GPU peripherals, mapped to 0x8000_0000 - 0x81ff_ffff 
+
+
+
+0x4000_0000 - 0x4003_ffff: peripherals, identity mapped
+
+
+
+
+process memory:
+
+
