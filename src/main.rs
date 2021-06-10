@@ -10,6 +10,7 @@
 #![feature(maybe_uninit_ref)]
 #![feature(core_intrinsics)]
 #![feature(inline_const)]
+#![feature(never_type)]
 #![no_std]
 #![no_main]
 
