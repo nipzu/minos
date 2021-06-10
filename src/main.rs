@@ -25,7 +25,7 @@ mod nolock;
 mod process;
 
 use console::{Console, CONSOLE};
-use core::{mem::MaybeUninit, sync::atomic::AtomicI32};
+use core::mem::MaybeUninit;
 use macros::*;
 
 // TODO: split mailbox tags into different types
@@ -56,11 +56,13 @@ pub unsafe extern "C" fn kernel_start() -> ! {
 
     asm!("svc #0xdead");
 
+    process::test();
+
     println!("[INFO]: looping forever...");
-    let mut i = 0;
+    // let mut i = 0;
     loop {
-        println!("{}", i);
-        i += 1;
+        // println!("{}", i);
+        // i += 1;
     }
 
     // TODO: test unaligned access
