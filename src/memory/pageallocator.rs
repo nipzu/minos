@@ -1,8 +1,15 @@
+use core::mem::MaybeUninit;
 use core::ptr::NonNull;
 
 const PAGE_SIZE: usize = 4096;
 
-struct PageAllocator;
+// free page == page that is part of a linked list and not used by a process
+// unused page == possibly uninitialized page, usually past all free pages
+
+struct PageAllocator {
+    max_page_address: usize,
+    first_free_page: Option<NonNull<FreePage>>,
+}
 
 impl PageAllocator {
     pub fn alloc_pages(count: usize) -> *mut u8 {
@@ -15,8 +22,17 @@ impl PageAllocator {
 }
 
 #[repr(C, align(4096))]
-struct EmptyPage {
-    num_consecutive_empty_pages: usize,
-    prev_empty_pages: Option<NonNull<EmptyPage>>,
-    next_empty_pages: Option<NonNull<EmptyPage>>,
+struct FreePage {
+    next_unused_page: Option<NonNull<MaybeUninit<FreePage>>>,
 }
+
+// static memory:
+// #################
+// # PageAllocator #
+// # 1st_free -> A #
+// #################
+//
+// pages: 
+// ############################################################################
+// ## B: next -> C ## used page ## A: next -> B ## C: next -> D ## D: uninit ## 
+// ############################################################################

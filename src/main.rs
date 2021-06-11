@@ -17,6 +17,7 @@
 global_asm!(include_str!("boot.s"));
 
 mod console;
+mod elf;
 mod exceptions;
 mod macros;
 mod mailbox;
@@ -56,7 +57,7 @@ pub unsafe extern "C" fn kernel_start() -> ! {
 
     asm!("svc #0xdead");
 
-    process::test();
+    elf::test();
 
     println!("[INFO]: looping forever...");
     // let mut i = 0;
@@ -91,7 +92,7 @@ fn panic(panic_info: &core::panic::PanicInfo) -> ! {
     }
 
     if let Some(location) = panic_info.location() {
-        println!("in file: {} at line {}", location.file(), location.line());
+        println!("in file: {}, at line: {}", location.file(), location.line());
     }
 
     loop {}
