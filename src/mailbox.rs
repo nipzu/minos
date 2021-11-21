@@ -95,7 +95,7 @@ impl<const LEN: usize, T: MailboxTagType> MailboxMessageBuffer<LEN, T> {
         }
 
         // TODO: should we pin or something, are there any guarantees that self.data won't be moved
-        let message = (self.data.as_ptr() as u32 & !0xF) | MAILBOX_PROPERTY_CHANNEL as u32;
+        let message = (self.data.as_ptr() as u32 & !0xf) | MAILBOX_PROPERTY_CHANNEL as u32;
 
         MAILBOX_WRITE_ADDR.write_volatile(message);
 
@@ -168,7 +168,7 @@ impl<'data, T: MailboxTagType> Iterator for MailboxResponseIterator<'data, T> {
             assert!(self.response_data[self.cur + 2] >> 31 == 1);
 
             tag = T::from_value(self.response_data[self.cur]);
-            let response_len = ((self.response_data[self.cur + 2] as usize & 0x7FFFFFFF) + 3) / 4;
+            let response_len = ((self.response_data[self.cur + 2] as usize & 0x7fff_ffff) + 3) / 4;
             value_buffer = &self.response_data[self.cur + 3..self.cur + 3 + response_len];
             self.cur += 3 + buffer_len;
         }

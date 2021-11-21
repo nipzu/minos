@@ -11,6 +11,8 @@
 #![feature(core_intrinsics)]
 #![feature(inline_const)]
 #![feature(never_type)]
+#![feature(ptr_as_uninit)]
+#![feature(maybe_uninit_extra)]
 #![no_std]
 #![no_main]
 

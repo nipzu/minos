@@ -2,7 +2,7 @@ use core::cell::UnsafeCell;
 
 use crate::nolock::NoLock;
 
-mod pageallocator;
+pub mod pageallocator;
 
 global_asm!(include_str!("memcpy.s"));
 
@@ -91,6 +91,8 @@ pub unsafe fn initialize_and_enable_mmu() {
     crate::println!("kernel_readonly_end: {:?}", _kernel_readonly_end.get());
     crate::println!("bss_start: {:?}", _bss_start.get());
     crate::println!("bss_end: {:?}", _bss_end.get());
+
+    crate::println!("{:#?}", pageallocator::PAGE_ALLOCATOR);
 }
 
 pub fn _test() {
