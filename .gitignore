@@ -1,4 +1,5 @@
 /target
+/tools
 Cargo.lock
 *.o
 *.elf
