@@ -1,3 +1,5 @@
+use core::arch::{asm, global_asm};
+
 mod syscalls;
 
 global_asm!(include_str!("vectortable.s"));

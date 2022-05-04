@@ -1,10 +1,11 @@
+use core::arch::asm;
 use core::marker::PhantomData;
 
-const MAILBOX_BASE_PTR: *mut u32 = 0x3F00B880 as *mut u32;
+const MAILBOX_BASE_ADDR: usize = 0x3F00B880;
 // TODO: could we use offset here?
-const MAILBOX_STATUS_ADDRS: *const u32 = unsafe { MAILBOX_BASE_PTR as u32 + 0x18 } as *const u32;
-const MAILBOX_WRITE_ADDR: *mut u32 = unsafe { MAILBOX_BASE_PTR as u32 + 0x20 } as *mut u32;
-const MAILBOX_READ_ADDR: *const u32 = MAILBOX_BASE_PTR;
+const MAILBOX_STATUS_PTR: *const u32 = (MAILBOX_BASE_ADDR + 0x18) as _;
+const MAILBOX_WRITE_PTR: *mut u32 = (MAILBOX_BASE_ADDR + 0x20) as _;
+const MAILBOX_READ_PTR: *const u32 = MAILBOX_BASE_ADDR as _;
 
 const MAILBOX_FULL: u32 = 0x80000000;
 const MAILBOX_EMPTY: u32 = 0x40000000;
@@ -90,21 +91,21 @@ impl<const LEN: usize, T: MailboxTagType> MailboxMessageBuffer<LEN, T> {
     /// # Safety
     /// Caller must make sure that the contents of the buffer are safe.
     pub unsafe fn send(&self) -> Result<MailboxResponse<LEN, T>, ()> {
-        while MAILBOX_STATUS_ADDRS.read_volatile() & MAILBOX_FULL > 0 {
+        while MAILBOX_STATUS_PTR.read_volatile() & MAILBOX_FULL > 0 {
             asm!("nop");
         }
 
         // TODO: should we pin or something, are there any guarantees that self.data won't be moved
         let message = (self.data.as_ptr() as u32 & !0xf) | MAILBOX_PROPERTY_CHANNEL as u32;
 
-        MAILBOX_WRITE_ADDR.write_volatile(message);
+        MAILBOX_WRITE_PTR.write_volatile(message);
 
         loop {
-            while MAILBOX_STATUS_ADDRS.read_volatile() & MAILBOX_EMPTY > 0 {
+            while MAILBOX_STATUS_PTR.read_volatile() & MAILBOX_EMPTY > 0 {
                 asm!("nop");
             }
 
-            if MAILBOX_READ_ADDR.read_volatile() == message {
+            if MAILBOX_READ_PTR.read_volatile() == message {
                 if self.data.as_ptr().add(1).read_volatile() != RESPONSE_CODE {
                     return Err(());
                 }

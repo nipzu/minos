@@ -1,3 +1,4 @@
+use core::arch::{asm, global_asm};
 use core::cell::UnsafeCell;
 
 use crate::nolock::NoLock;

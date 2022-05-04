@@ -1,20 +1,14 @@
 #![allow(incomplete_features)]
-#![feature(const_generics)]
-#![feature(const_evaluatable_checked)]
-#![feature(const_raw_ptr_to_usize_cast)]
-#![feature(asm)]
-#![feature(lang_items)]
-#![feature(global_asm)]
 #![feature(panic_info_message)]
 #![feature(decl_macro)]
-#![feature(maybe_uninit_ref)]
 #![feature(core_intrinsics)]
-#![feature(inline_const)]
 #![feature(never_type)]
 #![feature(ptr_as_uninit)]
-#![feature(maybe_uninit_extra)]
 #![no_std]
 #![no_main]
+
+use core::arch::{asm, global_asm};
+use core::mem::MaybeUninit;
 
 global_asm!(include_str!("boot.s"));
 
@@ -28,7 +22,6 @@ mod nolock;
 mod process;
 
 use console::{Console, CONSOLE};
-use core::mem::MaybeUninit;
 use macros::*;
 
 // TODO: split mailbox tags into different types
@@ -89,8 +82,8 @@ fn panic(panic_info: &core::panic::PanicInfo) -> ! {
     // TODO: what if we panic before/while initializing the console?
 
     match panic_info.message() {
-        Some(m) => println!("panicked with message: {}", m),
-        None => println!("panicked with no message"),
+        Some(m) => println!("KERNEL PANIC: {}", m),
+        None => println!("KERNEL PANIC"),
     }
 
     if let Some(location) = panic_info.location() {

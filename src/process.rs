@@ -13,8 +13,8 @@ struct Process {
     top_level_available_virtual_memory: NonNull<AvailableTopLevelVirtualMemory>,
 }
 
-static PROCESSES: SpinMutex<[Option<NonNull<Process>>; MAX_NUM_PROCESSES]> =
-    SpinMutex::new([const { Option::<NonNull<Process>>::None }; MAX_NUM_PROCESSES]);
+// static PROCESSES: SpinMutex<[Option<NonNull<Process>>; MAX_NUM_PROCESSES]> =
+//     SpinMutex::new([const { Option::<NonNull<Process>>::None }; MAX_NUM_PROCESSES]);
 
 impl Drop for Process {
     fn drop(&mut self) {
